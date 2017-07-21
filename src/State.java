@@ -11,32 +11,32 @@ import javax.swing.JPanel;
  */
 public class State extends JPanel {
 
-	/**
-	 * Updates contents.
-	 * 
-	 * @param elapsedTime The time elapsed since the start of the game
-	 */
-	public void update(float elapsedTime) {}
+    /**
+     * Updates contents.
+     * 
+     * @param elapsedTime The time elapsed since the start of the game
+     */
+    public void update(float elapsedTime) {}
 
-	/**
-	 * Render changes.
-	 */
-	public void render() {}
+    /**
+     * Render changes.
+     */
+    public void render() {}
 
-	/**
-	 * Called at the beginning of the state.
-	 */
-	public void enter() {}
+    /**
+     * Called at the beginning of the state.
+     */
+    public void enter() {}
 
-	/**
-	 * Called at the beginning of the state.
-	 * 
-	 * @param opt the optional variable
-	 */
-	public void enter(String opt) {}
+    /**
+     * Called at the beginning of the state.
+     * 
+     * @param opt the optional variable
+     */
+    public void enter(String opt) {}
 
-	/**
-	 * Called at the end of the state.
-	 */
-	public void exit() {}
+    /**
+     * Called at the end of the state.
+     */
+    public void exit() {}
 }

@@ -11,163 +11,162 @@ import javax.swing.ImageIcon;
  */
 
 public class Enemy {
-	
-	public Vector position = new Vector();
-	public Vector velocity = new Vector();
 
-	public int width;
-	public int height;
+    public Vector position = new Vector();
+    public Vector velocity = new Vector();
 
-	private final int MAX_SPEED_Y = 25;
+    public int width;
+    public int height;
 
-	private final int SPEED_X = 10;
+    private final int MAX_SPEED_Y = 25;
 
-	public boolean jumping;
-	public boolean swimming;
-	public boolean alive;
+    public boolean jumping;
+    public boolean swimming;
+    public boolean alive;
 
-	public boolean invincible;
-	private float attackedTime;
-	private final float INVINCIBLE_DURATION = 1;
+    public boolean invincible;
+    private float attackedTime;
+    private final float INVINCIBLE_DURATION = 1;
 
-	private Image imageFacingLeft;
-	private Image imageFacingRight;
+    private Image imageFacingLeft;
+    private Image imageFacingRight;
 
-	public int maxHP = 3;
-	public int hp;
+    public int maxHP = 3;
+    public int hp;
 
-	public int damage = 1;
-	
+    public int damage = 1;
 
-	/**
-	 * Sets the size of enemies and loads images of enemies.
-	 * @param width the width of enemies
-	 * @param height the height of enemies
-	 */
 
-	public Enemy(int width, int height) {
-		this.width = width;
-		this.height = height;
-		loadImages();
-	}
+    /**
+     * Sets the size of enemies and loads images of enemies.
+     * @param width the width of enemies
+     * @param height the height of enemies
+     */
 
-	/**
-	 * Initializes the position, the velocity, the HP, and other conditions of the enemy.
-	 * @param x the x coordinate of the initial tile of the enemy
-	 * @param y the y coordinate of the initial tile of the enemy
-	 */
+    public Enemy(int width, int height) {
+        this.width = width;
+        this.height = height;
+        loadImages();
+    }
 
-	public void init(int x, int y) {
-		// initialize the position
-		position.x = x * Map.TILE_SIZE;
-		position.y = y * Map.TILE_SIZE;
+    /**
+     * Initializes the position, the velocity, the HP, and other conditions of the enemy.
+     * @param x the x coordinate of the initial tile of the enemy
+     * @param y the y coordinate of the initial tile of the enemy
+     * @param speedX the speed of the enemy
+     */
 
-		// initialize the velocity
-		velocity.x = -SPEED_X;
-		velocity.y = 0;
+    public void init(int x, int y, int speedX) {
+        // initialize the position
+        position.x = x * Map.TILE_SIZE;
+        position.y = y * Map.TILE_SIZE;
 
-		// initialize the HP and other conditions
-		hp = maxHP;
+        // initialize the velocity
+        velocity.x = -speedX;
+        velocity.y = 0;
 
-		// initialize conditions
-		jumping = false;
-		swimming = false;
-		alive = true;
-		invincible = false;
-	}
+        // initialize the HP and other conditions
+        hp = maxHP;
 
-	/**
-	 * Updates the position and other conditions of the enemy.
-	 * @param elapsedTime the time elapsed since the game started
-	 */
+        // initialize conditions
+        jumping = false;
+        swimming = false;
+        alive = true;
+        invincible = false;
+    }
 
-	public void move(float elapsedTime) {
+    /**
+     * Updates the position and other conditions of the enemy.
+     * @param elapsedTime the time elapsed since the game started
+     */
 
-		int vx = velocity.x;
-		int vy = velocity.y;
+    public void move(float elapsedTime) {
 
-		// y velocity
-		// gravity
-		vy += 3;
+        int vx = velocity.x;
+        int vy = velocity.y;
 
-		// max speed
-		if (vy > MAX_SPEED_Y) {
-			vy = MAX_SPEED_Y;
-		} else if (vy < -MAX_SPEED_Y) {
-			vy = -MAX_SPEED_Y;
-		}
+        // y velocity
+        // gravity
+        vy += 3;
 
-		// resistance
-		if (swimming) {
-			vx *= 0.5;
-			vy *= 0.5;
-		}
+        // max speed
+        if (vy > MAX_SPEED_Y) {
+            vy = MAX_SPEED_Y;
+        } else if (vy < -MAX_SPEED_Y) {
+            vy = -MAX_SPEED_Y;
+        }
 
-		// set the velocity and the position
-		velocity.set(velocity.x, vy);
-		position.add(velocity);
+        // resistance
+        if (swimming) {
+            vx *= 0.5;
+            vy *= 0.5;
+        }
 
-		// make the enemy not invincible when a certain time has passed since attacked
-		if (elapsedTime - attackedTime >= INVINCIBLE_DURATION) {
-			invincible = false;
-		}
-	}
+        // set the velocity and the position
+        velocity.set(velocity.x, vy);
+        position.add(velocity);
 
-	/**
-	 * Executed when the enemy is attacked by Sota.
-	 * @param elapsedTime the time elapsed since the game started.
-	 * @param damage the damage
-	 */
+        // make the enemy not invincible when a certain time has passed since attacked
+        if (elapsedTime - attackedTime >= INVINCIBLE_DURATION) {
+            invincible = false;
+        }
+    }
 
-	public void attacked(float elapsedTime, int damage) {
-		if (invincible) return;
+    /**
+     * Executed when the enemy is attacked by Sota.
+     * @param elapsedTime the time elapsed since the game started.
+     * @param damage the damage
+     */
 
-		invincible = true;
-		attackedTime = elapsedTime;
+    public void attacked(float elapsedTime, int damage) {
+        if (invincible) return;
 
-		hp -= damage;
-		if (hp <= 0) {
-			alive = false;
-		}
-	}
+        invincible = true;
+        attackedTime = elapsedTime;
 
-	/**
-	 * Draws the enemy and its health bar.
-	 * @param g the graphics
-	 * @param mapX the x coordinate of the map
-	 * @param mapY the y coordinate of the map
-	 */
+        hp -= damage;
+        if (hp <= 0) {
+            alive = false;
+        }
+    }
 
-	public void draw(Graphics g, int mapX, int mapY) {
-		// draw the enemy
-		if (velocity.x < 0) {
-			g.drawImage(imageFacingLeft, position.x + mapX, position.y + mapY, null);
-		} else {
-			g.drawImage(imageFacingRight, position.x + mapX, position.y + mapY, null);
-		}
-		
-		if (invincible) {
-			g.setColor(new Color(255, 0, 0, 50));
-			g.fillRect(position.x + mapX, position.y + mapY, width, height);
-		}
+    /**
+     * Draws the enemy and its health bar.
+     * @param g the graphics
+     * @param mapX the x coordinate of the map
+     * @param mapY the y coordinate of the map
+     */
 
-		// draw its health bar
-		g.setColor(Color.BLACK);
-		g.fillRect(position.x + mapX, position.y + mapY - 10, width, 5);
-		g.setColor(Color.RED);
-		g.fillRect(position.x + mapX, position.y + mapY - 10, width * hp / maxHP, 5);
-	}
+    public void draw(Graphics g, int mapX, int mapY) {
+        // draw the enemy
+        if (velocity.x < 0) {
+            g.drawImage(imageFacingLeft, position.x + mapX, position.y + mapY, null);
+        } else {
+            g.drawImage(imageFacingRight, position.x + mapX, position.y + mapY, null);
+        }
 
-	/**
-	 * Loads images of enemies.
-	 */
+        if (invincible) {
+            g.setColor(new Color(255, 0, 0, 50));
+            g.fillRect(position.x + mapX, position.y + mapY, width, height);
+        }
 
-	private void loadImages() {
-		ImageIcon ii;
+        // draw its health bar
+        g.setColor(Color.BLACK);
+        g.fillRect(position.x + mapX, position.y + mapY - 10, width, 5);
+        g.setColor(Color.RED);
+        g.fillRect(position.x + mapX, position.y + mapY - 10, width * hp / maxHP, 5);
+    }
 
-		ii = new ImageIcon(getClass().getResource("/images/enemy.png"));
-		imageFacingLeft = Util.getScaledImage(ii.getImage(), width, height);
+    /**
+     * Loads images of enemies.
+     */
 
-		imageFacingRight = Util.getFlippedImage(imageFacingLeft);
-	}
+    private void loadImages() {
+        ImageIcon ii;
+
+        ii = new ImageIcon(getClass().getResource("/images/enemy.png"));
+        imageFacingLeft = Util.getScaledImage(ii.getImage(), width, height);
+
+        imageFacingRight = Util.getFlippedImage(imageFacingLeft);
+    }
 }

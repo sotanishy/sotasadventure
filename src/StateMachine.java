@@ -16,75 +16,75 @@ import javax.swing.JPanel;
 
 public class StateMachine {
 
-	private HashMap<String, State> states = new HashMap<String, State>();
-	private State currentState = new State();
-	private JPanel panel;
+    private HashMap<String, State> states = new HashMap<String, State>();
+    private State currentState = new State();
+    private JPanel panel;
 
-	/**
-	 * Sets the panel this state machine is applied to.
-	 * 
-	 * @param panel the panel this state machine is applied to
-	 */
-	public StateMachine(JPanel panel) {
-		this.panel = panel;
-		panel.add(currentState);
-	}
+    /**
+     * Sets the panel this state machine is applied to.
+     * 
+     * @param panel the panel this state machine is applied to
+     */
+    public StateMachine(JPanel panel) {
+        this.panel = panel;
+        panel.add(currentState);
+    }
 
-	/**
-	 * Calls the update method of the current state.
-	 * 
-	 * @param elapsedTime the time elapsed since the game started
-	 */
-	public void update(float elapsedTime) {
-		currentState.update(elapsedTime);
-	}
+    /**
+     * Calls the update method of the current state.
+     * 
+     * @param elapsedTime the time elapsed since the game started
+     */
+    public void update(float elapsedTime) {
+        currentState.update(elapsedTime);
+    }
 
-	/**
-	 * Calls the render method of the current state.
-	 */
-	public void render() {
-		currentState.render();
-	}
+    /**
+     * Calls the render method of the current state.
+     */
+    public void render() {
+        currentState.render();
+    }
 
-	/**
-	 * Changes the current state.
-	 * 
-	 * @param name the name of the state which comes next
-	 */
-	public void change(String name) {
-		// end the current state
-		currentState.exit();
+    /**
+     * Changes the current state.
+     * 
+     * @param name the name of the state which comes next
+     */
+    public void change(String name) {
+        // end the current state
+        currentState.exit();
 
-		// start the new state
-		currentState = states.get(name);
-		((CardLayout) panel.getLayout()).show(panel, name);
-		currentState.enter();
-	}
+        // start the new state
+        currentState = states.get(name);
+        ((CardLayout) panel.getLayout()).show(panel, name);
+        currentState.enter();
+    }
 
-	/**
-	 * Changes the current state and give a value to the next state.
-	 * 
-	 * @param name the name of the state which comes next
-	 * @param opt the optional variable
-	 */
-	public void change(String name, String opt) {
-		// end the current state
-		currentState.exit();
+    /**
+     * Changes the current state and give a value to the next state.
+     * 
+     * @param name the name of the state which comes next
+     * @param opt the optional variable
+     */
+    public void change(String name, String opt) {
+        // end the current state
+        currentState.exit();
 
-		// start the new state
-		currentState = states.get(name);
-		((CardLayout) panel.getLayout()).show(panel, name);
-		currentState.enter(opt);
-	}
+        // start the new state
+        currentState = states.get(name);
+        ((CardLayout) panel.getLayout()).show(panel, name);
+        currentState.enter(opt);
+    }
 
-	/**
-	 * Adds a state to the state machine.
-	 * 
-	 * @param name the name of the state to be added
-	 * @param state the state to be added
-	 */
-	public void add(String name, State state) {
-		states.put(name, state);
-		panel.add(state, name);
-	}
+    /**
+     * Adds a state to the state machine.
+     * 
+     * @param name the name of the state to be added
+     * @param state the state to be added
+     */
+    public void add(String name, State state) {
+        states.put(name, state);
+        panel.add(state, name);
+    }
 }
