@@ -2,6 +2,7 @@ package sotasadventure;
 
 import java.awt.Dimension;
 import java.awt.Image;
+import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -16,23 +17,21 @@ import javax.swing.JLabel;
 
 /**
  * The class that shows the main menu.
- *
- * @duthor Sota Nishiyama
- * @since  1.0
+ * @author Sota Nishiyama
  */
 public class MainMenuState extends State {
 
     private StateMachine gameMode;
 
-    private ImageIcon logo;
+    private Image background;
 
+    private ImageIcon logo;
     private ImageIcon startImage;
     private ImageIcon startImageHover;
 
     /**
      * Sets the layout and loads images.
-     *
-     * @param gameMode The state machine of the game.
+     * @param gameMode the state machine of the game
      */
     public MainMenuState(StateMachine gameMode) {
         this.gameMode = gameMode;
@@ -76,10 +75,17 @@ public class MainMenuState extends State {
     }
 
     @Override
-    public void update(float elapsedTime) {}
+    public void update(double elapsedTime) {}
 
     @Override
-    public void render() {}
+    public void render() {
+        repaint();
+    }
+
+    @Override
+    public void paintComponent(Graphics g) {
+        g.drawImage(Util.getScaledImage(background, (int) getSize().getWidth(), (int) getSize().getHeight()), 0, 0, null);
+    }
 
     @Override
     public void enter() {}
@@ -93,13 +99,16 @@ public class MainMenuState extends State {
     private void loadImages() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/logo.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/mainmenu-bg.png"));
+        background = ii.getImage();
+
+        ii = new ImageIcon(getClass().getResource("/resources/images/logo.png"));
         logo = new ImageIcon(Util.getScaledImage(ii.getImage(), 640, 267));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/start_button.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/start_button.png"));
         startImage = new ImageIcon(Util.getScaledImage(ii.getImage(), 200, 100));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/start_button_hover.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/start_button_hover.png"));
         startImageHover = new ImageIcon(Util.getScaledImage(ii.getImage(), 200, 100));
     }
 }

@@ -17,15 +17,21 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.prefs.Preferences;
 
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JOptionPane;
 
 /**
  * The class that deals with each stage.
+ * @author Sota Nishiyama
  */
-
 public class StageState extends State {
 
     private StateMachine gameMode;
@@ -39,11 +45,9 @@ public class StageState extends State {
     private SpaceShip spaceShip;
 
     private int timeLimit;
-    private float startTime = -1;
-    private float elapsedTime;
+    private double startTime = -1;
+    private double elapsedTime;
     private int timeRemaining;
-
-    private float swordStartTime;
 
     private int lives;
 
@@ -61,16 +65,22 @@ public class StageState extends State {
 
     private Map map = new Map();
 
-    private Image heartImage;
+    private Image healthImage;
     private Image coinImage;
     private Image gemImage;
     private Image clockImage;
+
+    private Clip coinSound;
+    private Clip gemSound;
+    private Clip healthSound;
+    private Clip gameStartSound;
+    private Clip gameClearSound;
+    private Clip gameOverSound;
 
     /**
      * Instanciates characters, loads images, and adds key listener.
      * @param gameMode The state machine of the game
      */
-
     public StageState(StateMachine gameMode) {
 
         // set the state machine
@@ -80,8 +90,7 @@ public class StageState extends State {
         sota = new Sota(TILE_SIZE, TILE_SIZE);
         spaceShip = new SpaceShip(TILE_SIZE * 5, TILE_SIZE * 3);
 
-        // load images
-        loadImages();
+        loadResources();
 
         // add key listener to move Sota
         addKeyListener(new KeyListener() {
@@ -141,7 +150,7 @@ public class StageState extends State {
     }
 
     @Override
-    public void update(float elapsedTime) {
+    public void update(double elapsedTime) {
 
         this.elapsedTime = elapsedTime;
 
@@ -155,19 +164,6 @@ public class StageState extends State {
             sota.alive = false;
         }
 
-        if (movement.contains("fire")) {
-            sota.initBullet(elapsedTime);
-            movement.remove("fire");
-        }
-
-        if (movement.contains("attack")) {
-            sota.sword = true;
-            if (elapsedTime - swordStartTime >= sota.swordSuccession) {
-                swordStartTime = elapsedTime;
-            }
-            movement.remove("attack");
-        }
-
         // Sota
         if (movement.contains("up") &&
             (map.getTile(sota.position.x / TILE_SIZE, sota.position.y / TILE_SIZE) == Map.DOOR_CLOSED || map.getTile(sota.position.x / TILE_SIZE + 1, sota.position.y / TILE_SIZE) == Map.DOOR_CLOSED)) {
@@ -179,83 +175,6 @@ public class StageState extends State {
             gems.clear();
         }
         sota.move(movement, elapsedTime);
-
-        // move the bullet
-        sota.moveBullets(elapsedTime);
-        bulletLoop: for (int i = 0; i < sota.bullets.size(); i++) {
-            Bullet bullet = sota.bullets.get(i);
-
-            int x = bullet.position.x;
-            int y = bullet.position.y;
-
-            if (map.isGround(map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE)) ||
-                (map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE) == Map.GROUND_HILL_LEFT && TILE_SIZE - x % TILE_SIZE < y % TILE_SIZE) ||
-                (map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE) == Map.GROUND_HILL_RIGHT && x % TILE_SIZE < y % TILE_SIZE)) {
-                sota.bullets.remove(bullet);
-                i--;
-                continue;
-            }
-
-            for (Enemy enemy: enemies) {
-                if (!enemy.alive) continue;
-
-                if (x > enemy.position.x && x < enemy.position.x + Map.TILE_SIZE &&
-                    y > enemy.position.y && y < enemy.position.y + Map.TILE_SIZE) {
-                    enemy.attacked(elapsedTime, bullet.damage);
-                    if (!enemy.alive) {
-                        gems.add(new int[] {enemy.position.x, enemy.position.y});
-                    }
-                    sota.bullets.remove(bullet);
-                    i--;
-                    continue bulletLoop;
-                }
-            }
-            if (spaceShip.alive &&
-                x > spaceShip.position.x && x < spaceShip.position.x + spaceShip.width &&
-                y > spaceShip.position.y && y < spaceShip.position.y + spaceShip.height) {
-                spaceShip.attacked(elapsedTime, bullet.damage);
-                if (!spaceShip.alive) {
-                    gameClear = true;
-                    run = false;
-                }
-                sota.bullets.remove(bullet);
-                i--;
-                continue;
-            }
-        }
-
-        // sword
-        if (sota.sword) {
-            if (elapsedTime - swordStartTime >= sota.swordTime) {
-                sota.sword = false;
-            } else {
-                for (Enemy enemy: enemies) {
-                    if (!enemy.alive) continue;
-
-                    if (sota.position.y + TILE_SIZE / 2 + sota.swordHeight / 2 >= enemy.position.y && sota.position.y + TILE_SIZE / 2 - sota.swordHeight / 2 <= enemy.position.y + TILE_SIZE) {
-                        if (sota.facingRight && sota.position.x + TILE_SIZE <= enemy.position.x + TILE_SIZE && sota.position.x + TILE_SIZE + sota.swordWidth >= enemy.position.x ||
-                            !sota.facingRight && sota.position.x - sota.swordWidth <= enemy.position.x + TILE_SIZE && sota.position.x >= enemy.position.x) {
-                            enemy.attacked(elapsedTime, sota.swordDamage);
-                            if (!enemy.alive) {
-                                gems.add(new int[] {enemy.position.x, enemy.position.y});
-                            }
-                        }
-                    }
-                }
-                if (spaceShip.alive &&
-                    sota.position.y + TILE_SIZE / 2 + sota.swordHeight / 2 >= spaceShip.position.y && sota.position.y + TILE_SIZE / 2 - sota.swordHeight / 2 <= spaceShip.position.y + spaceShip.height) {
-                    if (sota.facingRight && sota.position.x + TILE_SIZE <= spaceShip.position.x + TILE_SIZE * spaceShip.width && sota.position.x + TILE_SIZE + sota.swordWidth >= spaceShip.position.x ||
-                        !sota.facingRight && sota.position.x - sota.swordWidth <= spaceShip.position.x + TILE_SIZE * spaceShip.width && sota.position.x >= spaceShip.position.x) {
-                        spaceShip.attacked(elapsedTime, sota.swordDamage);
-                        if (!spaceShip.alive) {
-                            gameClear = true;
-                            run = false;
-                        }
-                    }
-                }
-            }
-
-        }
 
         // update the space ship
         spaceShip.update(elapsedTime);
@@ -515,6 +434,82 @@ public class StageState extends State {
 
         solveSotasCollision();
 
+        // move the bullet
+        sota.moveBullets(elapsedTime);
+        bulletLoop: for (int i = 0; i < sota.bullets.size(); i++) {
+            Bullet bullet = sota.bullets.get(i);
+
+            int x = bullet.position.x;
+            int y = bullet.position.y;
+
+            if (map.isGround(map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE)) ||
+                (map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE) == Map.GROUND_HILL_LEFT && TILE_SIZE - x % TILE_SIZE < y % TILE_SIZE) ||
+                (map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE) == Map.GROUND_HILL_RIGHT && x % TILE_SIZE < y % TILE_SIZE)) {
+                sota.bullets.remove(bullet);
+                i--;
+                continue;
+            }
+
+            for (Enemy enemy: enemies) {
+                if (!enemy.alive) continue;
+
+                if (x > enemy.position.x && x < enemy.position.x + Map.TILE_SIZE &&
+                    y > enemy.position.y && y < enemy.position.y + Map.TILE_SIZE) {
+                    enemy.attacked(elapsedTime, bullet.damage);
+                    if (!enemy.alive) {
+                        gems.add(new int[] {enemy.position.x, enemy.position.y});
+                    }
+                    sota.bullets.remove(bullet);
+                    i--;
+                    continue bulletLoop;
+                }
+            }
+            if (spaceShip.alive &&
+                x > spaceShip.position.x && x < spaceShip.position.x + spaceShip.width &&
+                y > spaceShip.position.y && y < spaceShip.position.y + spaceShip.height) {
+                spaceShip.attacked(elapsedTime, bullet.damage);
+                if (!spaceShip.alive) {
+                    gameClear = true;
+                    run = false;
+                    gameClearSound.setFramePosition(0);
+                    gameClearSound.start();
+                }
+                sota.bullets.remove(bullet);
+                i--;
+                continue;
+            }
+        }
+
+        // sword
+        if (sota.sword) {
+            for (Enemy enemy: enemies) {
+                if (!enemy.alive) continue;
+
+                if (sota.position.y + sota.height / 2 + sota.swordHeight / 2 >= enemy.position.y && sota.position.y + sota.height / 2 - sota.swordHeight / 2 <= enemy.position.y + enemy.height) {
+                    if (sota.facingRight && sota.position.x + sota.width <= enemy.position.x + enemy.width && sota.position.x + sota.width + sota.swordWidth >= enemy.position.x ||
+                        !sota.facingRight && sota.position.x - sota.swordWidth <= enemy.position.x + enemy.width && sota.position.x >= enemy.position.x) {
+                        enemy.attacked(elapsedTime, sota.swordDamage);
+                        if (!enemy.alive) {
+                            gems.add(new int[] {enemy.position.x, enemy.position.y});
+                        }
+                    }
+                }
+            }
+            if (spaceShip.alive &&
+                sota.position.y + TILE_SIZE / 2 + sota.swordHeight / 2 >= spaceShip.position.y && sota.position.y + TILE_SIZE / 2 - sota.swordHeight / 2 <= spaceShip.position.y + spaceShip.height) {
+                if (sota.facingRight && sota.position.x + TILE_SIZE <= spaceShip.position.x + TILE_SIZE * spaceShip.width && sota.position.x + TILE_SIZE + sota.swordWidth >= spaceShip.position.x ||
+                    !sota.facingRight && sota.position.x - sota.swordWidth <= spaceShip.position.x + TILE_SIZE * spaceShip.width && sota.position.x >= spaceShip.position.x) {
+                    spaceShip.attacked(elapsedTime, sota.swordDamage);
+                    if (!spaceShip.alive) {
+                        gameClear = true;
+                        run = false;
+                        gameClearSound.setFramePosition(0);
+                        gameClearSound.start();
+                    }
+                }
+            }
+        }
+
         // collision detection with gems
         for (int i = 0; i < gems.size(); i++) {
             int[] gemPosition = gems.get(i);
@@ -522,12 +517,16 @@ public class StageState extends State {
                 sota.position.y <= gemPosition[1] + Map.TILE_SIZE / 2 && gemPosition[1] + Map.TILE_SIZE / 2 <= sota.position.y + Map.TILE_SIZE) {
                 gems.remove(i);
                 earnedGems++;
+                gemSound.setFramePosition(0);
+                gemSound.start();
                 if (earnedGems == 10) {
-                    earnedGems -= 10;
+                    earnedGems = 0;
                     lives++;
                     if (lives == 100) {
                         lives = 99;
                     }
+                    healthSound.setFramePosition(0);
+                    healthSound.start();
                 }
             }
         }
@@ -539,6 +538,17 @@ public class StageState extends State {
                 sota.position.y <= coinPosition[1] + Map.TILE_SIZE / 2 && coinPosition[1] + Map.TILE_SIZE / 2 <= sota.position.y + Map.TILE_SIZE) {
                 coins.remove(i);
                 earnedCoins++;
+                coinSound.setFramePosition(0);
+                coinSound.start();
+                if (earnedCoins == 100) {
+                    earnedCoins = 0;
+                    lives++;
+                    if (lives == 100) {
+                        lives = 99;
+                    }
+                    healthSound.setFramePosition(0);
+                    healthSound.start();
+                }
             }
         }
 
@@ -546,6 +556,8 @@ public class StageState extends State {
             gameOver = true;
             lives--;
             run = false;
+            gameOverSound.setFramePosition(0);
+            gameOverSound.start();
         }
 
     }
@@ -626,7 +638,7 @@ public class StageState extends State {
         // draw the number of lives
         g.setFont(new Font("Consolas", Font.PLAIN, 30));
         g.setColor(Color.WHITE);
-        g.drawImage(heartImage, 10, 5, null);
+        g.drawImage(healthImage, 10, 5, null);
         g.drawString(" x " + lives, 50, 40);
 
         // draw the number of earned gems
@@ -660,7 +672,6 @@ public class StageState extends State {
             g.setFont(new Font("Consolas", Font.PLAIN, 50));
             g.drawString("PRESS ENTER TO GO TO THE WORLD MAP", 150, 400);
         }
-
     }
 
     @Override
@@ -681,26 +692,13 @@ public class StageState extends State {
         run = true;
         gameOver = gameClear = false;
 
-        Properties prop = new Properties();
-        FileInputStream input = null;
+        Preferences prefs = Preferences.userNodeForPackage(StageState.class);
+        lives = prefs.getInt("lives", 5);
+        earnedCoins = prefs.getInt("coin", 0);
+        earnedGems = prefs.getInt("gem", 0);
 
-        try {
-            URL url = getClass().getResource("/data.properties");
-            File resource = new File(url.toURI());
-            input = new FileInputStream(resource);
-
-            prop.load(input);
-
-            lives = Integer.parseInt(prop.getProperty("lives"));
-            earnedCoins = Integer.parseInt(prop.getProperty("coin"));
-            earnedGems = Integer.parseInt(prop.getProperty("gem"));
-
-            input.close();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        gameStartSound.setFramePosition(0);
+        gameStartSound.start();
     }
 
     @Override
@@ -709,46 +707,28 @@ public class StageState extends State {
         run = false;
         startTime = -1;
 
+        Preferences prefs = Preferences.userNodeForPackage(StageState.class);
         if (lives == 0) {
             lives = 5;
             earnedCoins = earnedGems = 0;
+
+            for (String stage: map.stages.keySet()) {
+                prefs.put(stage, "not cleared");
+            }
         }
 
-        Properties prop = new Properties();
-        FileInputStream input = null;
-        FileOutputStream output = null;
+        prefs.putInt("lives", lives);
+        prefs.putInt("coin", earnedCoins);
+        prefs.putInt("gem", earnedGems);
 
-        try {
-            URL url = getClass().getResource("/data.properties");
-            File resource = new File(url.toURI());
-            input = new FileInputStream(resource);
-            prop.load(input);
-            input.close();
-
-            output = new FileOutputStream(resource);
-
-            prop.setProperty("lives", lives + "");
-            prop.setProperty("coin", earnedCoins + "");
-            prop.setProperty("gem", earnedGems + "");
-
-            if (gameClear) {
-                prop.setProperty(map.getName(), "cleared");
-            }
-
-            prop.store(output, null);
-
-            output.close();
-        } catch (URISyntaxException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (gameClear) {
+            prefs.put(map.getName(), "cleared");
         }
     }
 
     /**
      * Solves Sota's collision against the wall.
      */
-
     private void solveSotasCollision() {
 
         // get the tile position where the player is
@@ -903,8 +883,7 @@ public class StageState extends State {
     /**
      * Solves Sota's collision against the space ship.
      */
-
-    private void solveSotasCollisionAgainstShip(float elapsedTime) {
+    private void solveSotasCollisionAgainstShip(double elapsedTime) {
         if (!sota.alive) return;
 
         sota.jumping = true;
@@ -970,35 +949,59 @@ public class StageState extends State {
                 }
             }
         }
-
-        if (!sota.alive) {
-            gameOver = true;
-            lives--;
-            run = false;
-        }
-
     }
 
     /**
-     * Loads images used in this state.
+     * Loads images and sounds.
      */
-
-    private void loadImages() {
+    private void loadResources() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/bg.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/bg.png"));
         bg = ii.getImage();
 
-        ii = new ImageIcon(getClass().getResource("/images/heart.png"));
-        heartImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        ii = new ImageIcon(getClass().getResource("/resources/images/heart.png"));
+        healthImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/coin.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/coin.png"));
         coinImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/gem.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/gem.png"));
         gemImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/clock.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/clock.png"));
         clockImage = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+
+        try {
+            AudioInputStream audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/coin.wav"));
+            coinSound = AudioSystem.getClip();
+            coinSound.open(audioIn);
+
+            audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/gem.wav"));
+            gemSound = AudioSystem.getClip();
+            gemSound.open(audioIn);
+
+            audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/health.wav"));
+            healthSound = AudioSystem.getClip();
+            healthSound.open(audioIn);
+
+            audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/game-start.wav"));
+            gameStartSound = AudioSystem.getClip();
+            gameStartSound.open(audioIn);
+
+            audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/game-clear.wav"));
+            gameClearSound = AudioSystem.getClip();
+            gameClearSound.open(audioIn);
+
+            audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/game-over.wav"));
+            gameOverSound = AudioSystem.getClip();
+            gameOverSound.open(audioIn);
+        } catch (UnsupportedAudioFileException e) {
+            e.printStackTrace();
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

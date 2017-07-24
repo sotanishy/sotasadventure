@@ -8,8 +8,8 @@ import javax.swing.ImageIcon;
 
 /**
  * The class that represents an enemy.
+ * @author Sota Nishiyama
  */
-
 public class Enemy {
 
     public Vector position = new Vector();
@@ -25,8 +25,8 @@ public class Enemy {
     public boolean alive;
 
     public boolean invincible;
-    private float attackedTime;
-    private final float INVINCIBLE_DURATION = 1;
+    private double attackedTime;
+    private final double INVINCIBLE_DURATION = 1;
 
     private Image imageFacingLeft;
     private Image imageFacingRight;
@@ -36,13 +36,11 @@ public class Enemy {
 
     public int damage = 1;
 
-
     /**
      * Sets the size of enemies and loads images of enemies.
      * @param width the width of enemies
      * @param height the height of enemies
      */
-
     public Enemy(int width, int height) {
         this.width = width;
         this.height = height;
@@ -55,7 +53,6 @@ public class Enemy {
      * @param y the y coordinate of the initial tile of the enemy
      * @param speedX the speed of the enemy
      */
-
     public void init(int x, int y, int speedX) {
         // initialize the position
         position.x = x * Map.TILE_SIZE;
@@ -79,8 +76,7 @@ public class Enemy {
      * Updates the position and other conditions of the enemy.
      * @param elapsedTime the time elapsed since the game started
      */
-
-    public void move(float elapsedTime) {
+    public void move(double elapsedTime) {
 
         int vx = velocity.x;
         int vy = velocity.y;
@@ -117,8 +113,7 @@ public class Enemy {
      * @param elapsedTime the time elapsed since the game started.
      * @param damage the damage
      */
-
-    public void attacked(float elapsedTime, int damage) {
+    public void attacked(double elapsedTime, int damage) {
         if (invincible) return;
 
         invincible = true;
@@ -136,7 +131,6 @@ public class Enemy {
      * @param mapX the x coordinate of the map
      * @param mapY the y coordinate of the map
      */
-
     public void draw(Graphics g, int mapX, int mapY) {
         // draw the enemy
         if (velocity.x < 0) {
@@ -160,11 +154,10 @@ public class Enemy {
     /**
      * Loads images of enemies.
      */
-
     private void loadImages() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/enemy.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/enemy.png"));
         imageFacingLeft = Util.getScaledImage(ii.getImage(), width, height);
 
         imageFacingRight = Util.getFlippedImage(imageFacingLeft);

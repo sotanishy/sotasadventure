@@ -13,16 +13,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 import java.util.Properties;
+import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 
 /**
  * The class that shows the world map.
  */
-
 public class WorldMapState extends State {
 
     private StateMachine gameMode;
@@ -32,7 +33,6 @@ public class WorldMapState extends State {
     private int gems;
 
     private String[][] stages = {
-        {"sampleStage", "not cleared"},
         {"northAmerica", "not cleared"},
         {"southAmerica", "not cleared"},
         {"africa", "not cleared"},
@@ -50,6 +50,8 @@ public class WorldMapState extends State {
     private Image gemImage;
 
     private ImageIcon[][] buttonImages = new ImageIcon[3][2];
+    private ImageIcon helpImage;
+    private ImageIcon helpImageHover;
 
     /**
      * Sets the background picture.
@@ -58,7 +60,7 @@ public class WorldMapState extends State {
     public WorldMapState(StateMachine gameMode) {
         this.gameMode = gameMode;
 
-        loadImages();
+        loadResources();
 
         int row = 20;
         int col = 30;
@@ -103,17 +105,35 @@ public class WorldMapState extends State {
             });
         }
 
+        JButton howToPlay = new JButton("How To Play");
+        howToPlay.setIcon(helpImage);
+        howToPlay.setBorder(BorderFactory.createEmptyBorder());
+        howToPlay.setContentAreaFilled(false);
+        howToPlay.setRolloverEnabled(true);
+        howToPlay.setRolloverIcon(helpImageHover);
+        howToPlay.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                JOptionPane.showMessageDialog(null,
+                "How To Play Sota's Adventure\n" +
+                "Press \u2190 \u2192 to move\n" +
+                "Press \u2191 to jump/enter a door\n" +
+                "Press A to attack by a sword\n" +
+                "Press F to fire a gun");
+            }
+        });
+
         // add buttons
         for (int i = 0; i < row; i++) {
             for (int j = 0; j < col; j++) {
-                if (i == 1 && j == 12) add(stageButtons[0]);
-                else if (i == 4 && j == 7) add(stageButtons[1]);
-                else if (i == 12 && j == 9) add(stageButtons[2]);
-                else if (i == 10 && j == 16) add(stageButtons[3]);
-                else if (i == 4 && j == 15) add(stageButtons[4]);
-                else if (i == 5 && j == 22) add(stageButtons[5]);
-                else if (i == 13 && j == 25) add(stageButtons[6]);
-                else if (i == 18 && j == 15) add(stageButtons[7]);
+                if (i == 2 && j == 1) add(howToPlay);
+                else if (i == 4 && j == 7) add(stageButtons[0]);
+                else if (i == 12 && j == 9) add(stageButtons[1]);
+                else if (i == 10 && j == 16) add(stageButtons[2]);
+                else if (i == 4 && j == 15) add(stageButtons[3]);
+                else if (i == 5 && j == 22) add(stageButtons[4]);
+                else if (i == 13 && j == 25) add(stageButtons[5]);
+                else if (i == 18 && j == 15) add(stageButtons[6]);
                 else add(new JLabel());
             }
         }
@@ -132,7 +152,7 @@ public class WorldMapState extends State {
     }
 
     @Override
-    public void update(float elapsedTime) {}
+    public void update(double elapsedTime) {}
 
     @Override
     public void render() {
@@ -158,35 +178,23 @@ public class WorldMapState extends State {
 
     @Override
     public void enter() {
-        Properties prop = new Properties();
-        InputStream input = null;
-        OutputStream output = null;
+        Preferences prefs = Preferences.userNodeForPackage(WorldMapState.class);
+        lives = prefs.getInt("lives", 5);
+        coins = prefs.getInt("coin", 0);
+        gems = prefs.getInt("gem", 0);
 
-        try {
-            input = getClass().getResourceAsStream("/data.properties");
-            prop.load(input);
+        for (int i = 0; i < stages.length; i++) {
+            stages[i][1] = prefs.get(stages[i][0], "not cleared");
 
-            lives = Integer.parseInt(prop.getProperty("lives"));
-            coins = Integer.parseInt(prop.getProperty("coin"));
-            gems = Integer.parseInt(prop.getProperty("gem"));
-
-            for (int i = 0; i < stages.length; i++) {
-                stages[i][1] = prop.getProperty(stages[i][0]);
-
-                if (stages[i][1].equals("cleared")) {
-                    stageButtons[i].setIcon(buttonImages[0][0]);
+            if (stages[i][1].equals("cleared")) {
+                stageButtons[i].setIcon(buttonImages[0][0]);
+            } else {
+                if (i == 0 || stages[i - 1][1].equals("cleared")) {
+                    stageButtons[i].setIcon(buttonImages[1][0]);
                 } else {
-                    if (i == 0 || stages[i - 1][1].equals("cleared")) {
-                        stageButtons[i].setIcon(buttonImages[1][0]);
-                    } else {
-                        stageButtons[i].setIcon(buttonImages[2][0]);
-                    }
+                    stageButtons[i].setIcon(buttonImages[2][0]);
                 }
             }
-
-            input.close();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
@@ -194,40 +202,46 @@ public class WorldMapState extends State {
     public void exit() {}
 
     /**
-     * Loads images of the world map and its contents.
+     * Loads images.
      */
-    private void loadImages() {
+    private void loadResources() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/world-map.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/world-map.png"));
         worldmap = ii.getImage();
 
-        ii = new ImageIcon(getClass().getResource("/images/heart.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/heart.png"));
         heartImage = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/coin.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/coin.png"));
         coinImage = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/gem.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/gem.png"));
         gemImage = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/button-blue.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/button-blue.png"));
         buttonImages[0][0] = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/button-blue-hover.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/button-blue-hover.png"));
         buttonImages[0][1] = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/button-red.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/button-red.png"));
         buttonImages[1][0] = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/button-red-hover.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/button-red-hover.png"));
         buttonImages[1][1] = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/button-black.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/button-black.png"));
         buttonImages[2][0] = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
 
-        ii = new ImageIcon(getClass().getResource("/images/buttons/button-black-hover.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/buttons/button-black-hover.png"));
         buttonImages[2][1] = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
+
+        ii = new ImageIcon(getClass().getResource("/resources/images/help.png"));
+        helpImage = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
+
+        ii = new ImageIcon(getClass().getResource("/resources/images/help-hover.png"));
+        helpImageHover = new ImageIcon(Util.getScaledImage(ii.getImage(), 30, 30));
     }
 
 }

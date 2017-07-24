@@ -9,6 +9,7 @@ import javax.swing.ImageIcon;
 
 /**
  * The class that represents the map.
+ * @author Sota Nishiyama
  */
 public class Map {
     public static final int GROUND_NONE = 0;
@@ -37,22 +38,21 @@ public class Map {
     private Stage currentStage;
     private int stageNum;
 
-    public float friction;
+    public double friction;
 
-    private HashMap<String, Stage> maps = new HashMap<String, Stage>();
+    public HashMap<String, Stage> stages = new HashMap<String, Stage>();
 
     /**
      * Stores all stages in a hash map and loads images.
      */
     public Map() {
-        maps.put("sampleStage", new Stage("sampleStage"));
-        maps.put("northAmerica", new Stage("northAmerica"));
-        maps.put("southAmerica", new Stage("southAmerica"));
-        maps.put("africa", new Stage("africa"));
-        maps.put("europe", new Stage("europe"));
-        maps.put("asia", new Stage("asia"));
-        maps.put("oceania", new Stage("oceania"));
-        maps.put("antarctica", new Stage("antarctica"));
+        stages.put("northAmerica", new Stage("northAmerica"));
+        stages.put("southAmerica", new Stage("southAmerica"));
+        stages.put("africa", new Stage("africa"));
+        stages.put("europe", new Stage("europe"));
+        stages.put("asia", new Stage("asia"));
+        stages.put("oceania", new Stage("oceania"));
+        stages.put("antarctica", new Stage("antarctica"));
 
         loadImage();
     }
@@ -62,7 +62,7 @@ public class Map {
      * @param stage the name of the stage
      */
     public void set(String stageName) {
-        currentStage = maps.get(stageName);
+        currentStage = stages.get(stageName);
         currentStage.name = stageName;
         stageNum = 0;
     }
@@ -143,7 +143,7 @@ public class Map {
 
     /**
      * Returns the friction of the current stage.
-     * @return float the friction of the current stage
+     * @return double the friction of the current stage
      */
     public double getFriction() {
         return currentStage.friction;
@@ -324,22 +324,22 @@ public class Map {
     private void loadImage() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/door_closedMid.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_closedMid.png"));
         doorClosedImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/door_closedTop.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_closedTop.png"));
         doorClosedTopImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/door_openMid.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_openMid.png"));
         doorOpenImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/door_openTop.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_openTop.png"));
         doorOpenTopImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/sign.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/sign.png"));
         signImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/liquidWater.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/liquidWater.png"));
         waterImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
     }
 }

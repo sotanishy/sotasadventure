@@ -38,7 +38,7 @@ public class Stage {
         InputStream input = null;
 
         try {
-            input = getClass().getResourceAsStream("/stages.properties");
+            input = getClass().getResourceAsStream("/resources/stages.properties");
             prop.load(input);
 
             String data = prop.getProperty(name);
@@ -131,24 +131,24 @@ public class Stage {
     private void loadImages() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/" + name +"/surface.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name +"/surface.png"));
         surface = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/" + name +"/center.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name +"/center.png"));
         center = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/" + name +"/right.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name +"/right.png"));
         right = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
         left = Util.getFlippedImage(right);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/" + name + "/mid.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name + "/mid.png"));
         mid = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/" + name + "/hillRight.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name + "/hillRight.png"));
         hillRight = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
-        ii = new ImageIcon(getClass().getResource("/images/Tiles/" + name + "/hillRight2.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name + "/hillRight2.png"));
         hillRight2 = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
 
         hillLeft = Util.getFlippedImage(hillRight);

@@ -9,8 +9,8 @@ import javax.swing.ImageIcon;
 
 /**
  * The class that represents enemies' space ship.
+ * @author Sota Nishiyama
  */
-
 public class SpaceShip {
     public Vector position = new Vector();
     public Vector velocity = new Vector();
@@ -23,8 +23,8 @@ public class SpaceShip {
     public boolean alive;
 
     public boolean invincible;
-    private float attackedTime;
-    private final float INVINCIBLE_DURATION = 2;
+    private double attackedTime;
+    private final double INVINCIBLE_DURATION = 2;
 
     public Image image;
 
@@ -33,8 +33,10 @@ public class SpaceShip {
 
     public int damage = 1;
 
-    private float deployedTime;
-    private final float DEPLOY_INTERVAL = 8;
+    private double deployedTime;
+    private final double DEPLOY_INTERVAL = 8;
+    private final int DEPLOY_MAX = 20;
+    private int deployCount = 0;
 
     /**
      * Sets the size of the space ship and loads images of the enemy ship.
@@ -42,7 +44,6 @@ public class SpaceShip {
      * @param height the height of space ship
      * @param type the type of space ship
      */
-
     public SpaceShip(int width, int height) {
         this.width = width;
         this.height = height;
@@ -54,8 +55,7 @@ public class SpaceShip {
      * Updates conditions of the space ship.
      * @param elapsedTime the time elapsed since the game started
      */
-
-    public void update(float elapsedTime) {
+    public void update(double elapsedTime) {
         // make the enemy not invincible when a certain time has passed since attacked
         if (elapsedTime - attackedTime >= INVINCIBLE_DURATION) {
             invincible = false;
@@ -68,7 +68,6 @@ public class SpaceShip {
      * Initializes the position, the velocity, the HP, and other conditions of the space ship.
      * @param p the position of the initial tile of the space ship
      */
-
     public void init(Vector p, int speedX) {
         position.x = p.x;
         position.y = p.y;
@@ -93,14 +92,15 @@ public class SpaceShip {
      * @param enemyHeight the height of enemies
      * @param enemySpeed the speed of enemies
      */
-
-    public ArrayList<Enemy> deployEnemies(ArrayList<Enemy> enemies, float elapsedTime, int enemyWidth, int enemyHeight, int enemySpeed) {
-        if (elapsedTime - deployedTime > DEPLOY_INTERVAL) {
+    public ArrayList<Enemy> deployEnemies(ArrayList<Enemy> enemies, double elapsedTime, int enemyWidth, int enemyHeight, int enemySpeed) {
+        if (elapsedTime - deployedTime > DEPLOY_INTERVAL && deployCount < DEPLOY_MAX) {
             deployedTime = elapsedTime;
 
             Enemy enemy = new Enemy(enemyWidth, enemyHeight);
             enemy.init((position.x + width / 2) / Map.TILE_SIZE, (position.y + height) / Map.TILE_SIZE, enemySpeed);
             enemies.add(enemy);
+
+            deployCount++;
         }
         return enemies;
     }
@@ -110,8 +110,7 @@ public class SpaceShip {
      * @param elapsedTime the time elapsed since the game started.
      * @param damage the damage
      */
-
-    public void attacked(float elapsedTime, int damage) {
+    public void attacked(double elapsedTime, int damage) {
         if (invincible) return;
 
         invincible = true;
@@ -129,7 +128,6 @@ public class SpaceShip {
      * @param mapX the x coordinate of the map
      * @param mapY the y coordinate of the map
      */
-
     public void draw(Graphics g, int mapX, int mapY) {
         // draw the space ship
         g.drawImage(image, position.x + mapX, position.y + mapY, null);
@@ -149,11 +147,10 @@ public class SpaceShip {
     /**
      * Loads images of the space ship.
      */
-
     private void loadImages() {
         ImageIcon ii;
 
-        ii = new ImageIcon(getClass().getResource("/images/spaceship.png"));
+        ii = new ImageIcon(getClass().getResource("/resources/images/spaceship.png"));
         image = Util.getScaledImage(ii.getImage(), width, (int) (height * 1.33));
     }
 }
