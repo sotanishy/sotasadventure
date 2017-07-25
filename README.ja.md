@@ -1,12 +1,12 @@
 ![Sota's Adventure](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/images/logo.png)
 
-Sota's Adventure is a simple side-scrolling game.
+Sota's Adventure はシンプルなRPGゲームです。
 
-[日本語版](README.ja.md)はこちら
+[English version](README.md) is here.
 
-## Installing
+## インストール
 
-Download `sotasadventure-1.0.0.jar` from the [release page](https://github.com/sotanishy/sotasadventure/releases/latest)
+`sotasadventure-1.0.0.jar` を [release page](https://github.com/sotanishy/sotasadventure/releases/latest) からダウンロードしてください。
 
 ## Player's Guide
 
