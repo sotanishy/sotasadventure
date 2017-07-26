@@ -12,7 +12,7 @@ Sota's Adventure はシンプルなRPGゲームです。
 
 ### ダウンロード
 
-`sotasadventure-1.0.0.jar` を [release page](https://github.com/sotanishy/sotasadventure/releases/latest) からダウンロードしてください。
+`sotasadventure-1.0.1.jar` を [release page](https://github.com/sotanishy/sotasadventure/releases/latest) からダウンロードしてください。
 
 ## プレイヤーガイド
 
