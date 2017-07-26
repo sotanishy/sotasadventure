@@ -81,6 +81,7 @@ public class SpaceShip {
             alive = false;
         }
         invincible = false;
+        deployCount = 0;
     }
 
     /**

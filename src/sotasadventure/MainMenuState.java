@@ -88,7 +88,7 @@ public class MainMenuState extends State {
     }
 
     @Override
-    public void enter() {}
+    public void enter(String optional) {}
 
     @Override
     public void exit() {}

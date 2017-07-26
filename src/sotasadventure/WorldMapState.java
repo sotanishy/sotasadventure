@@ -177,7 +177,7 @@ public class WorldMapState extends State {
     }
 
     @Override
-    public void enter() {
+    public void enter(String optional) {
         Preferences prefs = Preferences.userNodeForPackage(WorldMapState.class);
         lives = prefs.getInt("lives", 5);
         coins = prefs.getInt("coin", 0);

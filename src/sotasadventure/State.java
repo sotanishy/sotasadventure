@@ -4,11 +4,11 @@ import javax.swing.JPanel;
 
 /**
  * The super class of states.
- * This class contains some methods that is used to update contents and help transition.
+ * This class contains some methods that is used to update and render contents and help transitions.
  *
  * @author Sota Nishiyama
  */
-public class State extends JPanel {
+public abstract class State extends JPanel {
 
     /**
      * Updates contents.
@@ -23,14 +23,9 @@ public class State extends JPanel {
 
     /**
      * Called at the beginning of the state.
+     * @param optional the optional variable
      */
-    public void enter() {}
-
-    /**
-     * Called at the beginning of the state.
-     * @param opt the optional variable
-     */
-    public void enter(String opt) {}
+    public void enter(String optional) {}
 
     /**
      * Called at the end of the state.

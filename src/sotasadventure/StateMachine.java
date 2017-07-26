@@ -7,7 +7,7 @@ import javax.swing.JPanel;
 
 /**
  * The class that stores and handles all states used in the game.
- * When updating and rendering contents in the game, methods in this class will be called instead of methods in each State.
+ * When updating and rendering contents in the game, methods in this class will be called instead of methods in each State by the game loop.
  * The class sets the current state to currentStage field and operates it through other methods.
  *
  * @author Sota Nishiyama
@@ -15,8 +15,22 @@ import javax.swing.JPanel;
 public class StateMachine {
 
     private HashMap<String, State> states = new HashMap<String, State>();
-    private State currentState = new State();
+    private State currentState = new EmptyState();
     private JPanel panel;
+
+    private class EmptyState extends State {
+        @Override
+        public void update(double elapsedTime) {}
+
+        @Override
+        public void render() {}
+
+        @Override
+        public void enter(String optional) {}
+
+        @Override
+        public void exit() {}
+    }
 
     /**
      * Sets the panel this state machine is applied to.
@@ -43,21 +57,7 @@ public class StateMachine {
     }
 
     /**
-     * Changes the current state.
-     * @param name the name of the state which comes next
-     */
-    public void change(String name) {
-        // end the current state
-        currentState.exit();
-
-        // start the new state
-        currentState = states.get(name);
-        ((CardLayout) panel.getLayout()).show(panel, name);
-        currentState.enter();
-    }
-
-    /**
-     * Changes the current state and give a value to the next state.
+     * Changes the current state and give an optional string to the next state.
      * @param name the name of the state which comes next
      * @param opt the optional variable
      */
@@ -69,6 +69,14 @@ public class StateMachine {
         currentState = states.get(name);
         ((CardLayout) panel.getLayout()).show(panel, name);
         currentState.enter(opt);
+    }
+
+    /**
+     * Changes the current state and give an empty string to the next state.
+     * @param name the name of the state which comes next
+     */
+    public void change(String name) {
+        change(name, "");
     }
 
     /**
