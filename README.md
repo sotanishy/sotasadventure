@@ -13,7 +13,7 @@ Sota's Adventure is a simple side-scrolling game.
 
 ### Download
 
-Download `sotasadventure-1.0.1.jar` from the [release page](https://github.com/sotanishy/sotasadventure/releases/latest)
+Download `sotasadventure.jar` from the [release page](https://github.com/sotanishy/sotasadventure/releases/latest)
 
 ## Player's Guide
 
