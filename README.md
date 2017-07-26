@@ -6,6 +6,13 @@ Sota's Adventure is a simple side-scrolling game.
 
 ## Installing
 
+### Prerequisites
+
+* [Java](https://java.com/en/download/)
+
+
+### Download
+
 Download `sotasadventure-1.0.0.jar` from the [release page](https://github.com/sotanishy/sotasadventure/releases/latest)
 
 ## Player's Guide
@@ -41,7 +48,9 @@ A blue button means that the stage is already cleared. A red button means that t
 ### Stage
 
 ![Stage image](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/example/stage1.png)
+
 ![Stage image](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/example/stage2.png)
+
 ![Stage image](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/example/stage3.png)
 
 Just like the world map, there are the heart, the gem, and the coin pictures.

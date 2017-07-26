@@ -6,6 +6,12 @@ Sota's Adventure はシンプルなRPGゲームです。
 
 ## インストール
 
+### 前提条件
+
+* [Java](https://java.com/ja/download/)
+
+### ダウンロード
+
 `sotasadventure-1.0.0.jar` を [release page](https://github.com/sotanishy/sotasadventure/releases/latest) からダウンロードしてください。
 
 ## プレイヤーガイド
@@ -41,7 +47,9 @@ START ボタンを押すとゲームが始まります。
 ### ステージ
 
 ![Stage image](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/example/stage1.png)
+
 ![Stage image](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/example/stage2.png)
+
 ![Stage image](https://raw.githubusercontent.com/sotanishy/sotasadventure/master/resources/example/stage3.png)
 
 ワールドマップのように、ハート、ジェム、コインの画像があります。
