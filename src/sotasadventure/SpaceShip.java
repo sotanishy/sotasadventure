@@ -11,83 +11,63 @@ import javax.swing.ImageIcon;
  * The class that represents enemies' space ship.
  * @author Sota Nishiyama
  */
-public class SpaceShip {
-    public Vector position = new Vector();
-    public Vector velocity = new Vector();
-
-    public int width;
-    public int height;
-
-    public int type;
-
-    public boolean alive;
-
-    public boolean invincible;
-    private double attackedTime;
-    private final double INVINCIBLE_DURATION = 2;
-
-    public Image image;
-
-    public int maxHP = 10;
-    public int hp;
-
-    public int damage = 1;
-
+public class SpaceShip extends Sprite {
     private double deployedTime;
     private final double DEPLOY_INTERVAL = 8;
     private final int DEPLOY_MAX = 20;
     private int deployCount = 0;
 
     /**
-     * Sets the size of the space ship and loads images of the enemy ship.
+     * Sets the size of the space ship and loads images of the space ship.
      * @param width the width of space ship
      * @param height the height of space ship
-     * @param type the type of space ship
      */
     public SpaceShip(int width, int height) {
-        this.width = width;
-        this.height = height;
+        super(width, height);
+        maxHP = 10;
+        damage = 1;
+        invincibleDuration = 2;
+        healthColor = Color.RED;
         deployedTime = -DEPLOY_INTERVAL;
-        loadImages();
-    }
-
-    /**
-     * Updates conditions of the space ship.
-     * @param elapsedTime the time elapsed since the game started
-     */
-    public void update(double elapsedTime) {
-        // make the enemy not invincible when a certain time has passed since attacked
-        if (elapsedTime - attackedTime >= INVINCIBLE_DURATION) {
-            invincible = false;
-        }
-
-        position.add(velocity);
+        loadResources();
     }
 
     /**
      * Initializes the position, the velocity, the HP, and other conditions of the space ship.
      * @param p the position of the initial tile of the space ship
+     * @param speedX the speed of the space ship
      */
     public void init(Vector p, int speedX) {
-        position.x = p.x;
-        position.y = p.y;
+        super.init(p.x, p.y);
 
         velocity.x = -speedX;
 
-        hp = maxHP;
         if (position.x > 0) {
             alive = true;
         } else {
             alive = false;
         }
-        invincible = false;
         deployCount = 0;
+    }
+
+    /**
+     * Solves collision between the space ship and walls.
+     * @param map the map
+     */
+    @Override
+    public void solveCollisionAgainstWalls(Map map) {
+        for (int i = position.y / Constants.TILE_SIZE; i <= (position.y + height) / Constants.TILE_SIZE; i++) {
+            if (map.getTile(position.x / Constants.TILE_SIZE, i) == Map.GROUND ||
+                map.getTile((position.x + width) / Constants.TILE_SIZE, i) == Map.GROUND) {
+                velocity.x *= -1;
+                break;
+            }
+        }
     }
 
     /**
      * Deploys enemies.
      * @param enemies an arraylist of enemies
-     * @param map the map
      * @param elapsedTime the time elapsed since the game started
      * @param enemyWidth the width of enemies
      * @param enemyHeight the height of enemies
@@ -98,7 +78,7 @@ public class SpaceShip {
             deployedTime = elapsedTime;
 
             Enemy enemy = new Enemy(enemyWidth, enemyHeight);
-            enemy.init((position.x + width / 2) / Map.TILE_SIZE, (position.y + height) / Map.TILE_SIZE, enemySpeed);
+            enemy.init(position.x + width / 2 - Constants.TILE_SIZE / 2, position.y + height, enemySpeed);
             enemies.add(enemy);
 
             deployCount++;
@@ -107,48 +87,9 @@ public class SpaceShip {
     }
 
     /**
-     * Executed when the space ship is attacked by Sota.
-     * @param elapsedTime the time elapsed since the game started.
-     * @param damage the damage
-     */
-    public void attacked(double elapsedTime, int damage) {
-        if (invincible) return;
-
-        invincible = true;
-        attackedTime = elapsedTime;
-
-        hp -= damage;
-        if (hp <= 0) {
-            alive = false;
-        }
-    }
-
-    /**
-     * Draws the space ship and its health bar.
-     * @param g the graphics
-     * @param mapX the x coordinate of the map
-     * @param mapY the y coordinate of the map
-     */
-    public void draw(Graphics g, int mapX, int mapY) {
-        // draw the space ship
-        g.drawImage(image, position.x + mapX, position.y + mapY, null);
-
-        if (invincible) {
-            g.setColor(new Color(255, 0, 0, 50));
-            g.fillRect(position.x + mapX, position.y + mapY, width, height);
-        }
-
-        // draw its health bar
-        g.setColor(Color.BLACK);
-        g.fillRect(position.x + mapX, position.y + mapY - 10, width, 5);
-        g.setColor(Color.RED);
-        g.fillRect(position.x + mapX, position.y + mapY - 10, width * hp / maxHP, 5);
-    }
-
-    /**
      * Loads images of the space ship.
      */
-    private void loadImages() {
+    private void loadResources() {
         ImageIcon ii;
 
         ii = new ImageIcon(getClass().getResource("/resources/images/spaceship.png"));
