@@ -5,7 +5,6 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Iterator;
 
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
@@ -18,32 +17,19 @@ import javax.swing.ImageIcon;
  * The class that represents Sota.
  * @author Sota Nishiyama
  */
-public class Sota {
-
-    public Vector position = new Vector();
-    public Vector velocity = new Vector();
-
-    public int width;
-    public int height;
-
+public class Sota extends Sprite {
     private double friction;
 
     private final int MAX_SPEED_X = 15;
     private final int MAX_SPEED_Y = 25;
     private final int JUMP_CUTOFF = -10;
 
-    public boolean jumping;
-    public boolean swimming;
-    public boolean alive;
     public boolean facingRight;
-
-    public boolean invincible;
-    private double attackedTime;
-    private final double INVINCIBLE_DURATION = 2;
 
     public ArrayList<Bullet> bullets = new ArrayList<Bullet>();
 
     public boolean sword;
+    public Vector swordPosition = new Vector();
     public int swordWidth = 30;
     public int swordHeight = 10;
     public int swordDamage = 2;
@@ -51,18 +37,10 @@ public class Sota {
     private double swordStartTime;
     private double swordSuccession = .7;
 
-    public int maxHP = 3;
-    public int hp;
-
-    private final int PLAYER_STAND_RIGHT = 0;
-    private final int PLAYER_STAND_LEFT = 1;
-    private final int PLAYER_JUMP_RIGHT = 2;
-    private final int PLAYER_JUMP_LEFT = 3;
-    private final int PLAYER_WALK = 4;
-    private final int WALK_POSES = 11;
-    private int poseCount;
-
-    private Image[] images = new Image[PLAYER_WALK + WALK_POSES * 2];
+    private Image standRightImage;
+    private Image standLeftImage;
+    private Image jumpRightImage;
+    private Image jumpLeftImage;
     private Image attackRightImage;
     private Image attackLeftImage;
     private Image bulletImage;
@@ -81,8 +59,10 @@ public class Sota {
      * @param height Sota's height
      */
     public Sota(int width, int height) {
-        this.width = width;
-        this.height = height;
+        super(width, height);
+        maxHP = 3;
+        invincibleDuration = 2;
+        healthColor = Color.BLUE;
         loadResources();
     }
 
@@ -99,7 +79,6 @@ public class Sota {
         // initialize the velocity and other conditions
         velocity.x = velocity.y = 0;
         friction = map.getFriction();
-        poseCount = 0;
         jumping = false;
         swimming = false;
         alive = true;
@@ -180,7 +159,7 @@ public class Sota {
         }
 
         // gravity
-        vy += 3;
+        vy += Constants.GRAVITY;
 
         // max speed
         if (vy > MAX_SPEED_Y) {
@@ -193,25 +172,82 @@ public class Sota {
         if (!swimming) {
             vx *= 0.9;
         } else {
-            vx *= 0.5;
-            vy *= 0.5;
-        }
-
-        // walking pose
-        if (vx == 0) {
-            poseCount = 0;
-        } else {
-            poseCount++;
-            poseCount %= WALK_POSES;
+            vx *= Constants.WATER_RESISTANCE;
+            vy *= Constants.WATER_RESISTANCE;
         }
 
         // set the velocity and the position
-        velocity.set(vx, vy);
-        position.add(velocity);
+        velocity.x = vx;
+        velocity.y = vy;
 
-        // make Sota not invincible when a certain time has passed since attacked
-        if (elapsedTime - attackedTime >= INVINCIBLE_DURATION) {
-            invincible = false;
+        super.move(elapsedTime);
+    }
+
+    /**
+     * Executed when Sota is attacked by an enemy.
+     * @param elapsedTime the time elapsed since the game started.
+     * @param damage the damage
+     */
+    @Override
+    public void attacked(double elapsedTime, int damage) {
+        int hpBeforeAttacked = hp;
+
+        super.attacked(elapsedTime, damage);
+
+        if (hpBeforeAttacked != hp) {
+            attackedSound.setFramePosition(0);
+            attackedSound.start();
+        }
+    }
+
+    /**
+     * Draws Sota, his weapons, and his health bar.
+     * @param g the graphics
+     * @param mapX the x coordinate of the map
+     * @param mapY the y coordinate of the map
+     */
+    @Override
+    public void draw(Graphics g, int mapX, int mapY) {
+        // set Sota's image
+        if (sword || !bullets.isEmpty()) {
+            if (facingRight) {
+                image = attackRightImage;
+            } else {
+                image = attackLeftImage;
+            }
+        } else if (jumping) {
+            if (facingRight) {
+                image = jumpRightImage;
+            } else {
+                image = jumpLeftImage;
+            }
+        } else {
+            if (facingRight) {
+                image = standRightImage;
+            } else {
+                image = standLeftImage;
+            }
+        }
+
+        super.draw(g, mapX, mapY);
+
+        // draw his weapons
+        for (Bullet bullet: bullets) {
+            g.drawImage(bulletImage, bullet.position.x - Constants.TILE_SIZE / 2 + mapX, bullet.position.y - Constants.TILE_SIZE / 2 + mapY, null);
+        }
+        if (!bullets.isEmpty()) {
+            if (facingRight) {
+                g.drawImage(gunRightImage, position.x + width + mapX, position.y + mapY, null);
+            } else {
+                g.drawImage(gunLeftImage, position.x - width + mapX, position.y + mapY, null);
+            }
+        }
+        if (sword) {
+            if (facingRight) {
+                g.drawImage(swordRightImage, position.x + width + mapX, position.y + height / 2 - swordHeight / 2 + mapY, null);
+            } else {
+                g.drawImage(swordLeftImage, position.x - swordWidth + mapX, position.y + height / 2 - swordHeight / 2 + mapY, null);
+            }
         }
     }
 
@@ -225,9 +261,7 @@ public class Sota {
             return;
         }
 
-        Bullet bullet = new Bullet();
-
-        bullet.firedTime = elapsedTime;
+        Bullet bullet = new Bullet(elapsedTime);
 
         if (facingRight) {
             bullet.position.x = position.x + height;
@@ -246,132 +280,20 @@ public class Sota {
     }
 
     /**
-     * Moves bullets.
-     * @param elapsedTime the time elapsed since the game started
-     */
-    public void moveBullets(double elapsedTime) {
-        Iterator<Bullet> i = bullets.iterator();
-
-        while (i.hasNext()) {
-            Bullet bullet = i.next();
-
-            if (elapsedTime - bullet.firedTime > Bullet.DURATION) {
-                i.remove();
-            }
-
-            bullet.position.x += bullet.speed;
-        }
-    }
-
-    /**
-     * Executed when Sota is attacked by an enemy.
-     * @param elapsedTime the time elapsed since the game started.
-     * @param damage the damage
-     */
-    public void attacked(double elapsedTime, int damage) {
-        if (invincible) return;
-
-        invincible = true;
-        attackedTime = elapsedTime;
-
-        hp -= damage;
-        if (hp <= 0) {
-            alive = false;
-        }
-
-        attackedSound.setFramePosition(0);
-        attackedSound.start();
-    }
-
-    /**
-     * Draws Sota, his weapons, and his health bar.
-     * @param g the graphics
-     * @param mapX the x coordinate of the map
-     * @param mapY the y coordinate of the map
-     */
-    public void draw(Graphics g, int mapX, int mapY) {
-        // draw Sota
-        Image image;
-        if (sword || !bullets.isEmpty()) {
-            if (facingRight) {
-                image = attackRightImage;
-            } else {
-                image = attackLeftImage;
-            }
-        } else if (jumping) {
-            if (facingRight) {
-                image = images[PLAYER_JUMP_RIGHT];
-            } else {
-                image = images[PLAYER_JUMP_LEFT];
-            }
-        } else if (velocity.x == 0) {
-            if (facingRight) {
-                image = images[PLAYER_STAND_RIGHT];
-            } else {
-                image = images[PLAYER_STAND_LEFT];
-            }
-        } else {
-            image = images[PLAYER_WALK + ((velocity.x > 0) ? 0 : WALK_POSES) + poseCount];
-        }
-
-        g.drawImage(image, position.x + mapX, position.y + mapY, null);
-
-        if (invincible) {
-            g.setColor(new Color(255, 0, 0, 50));
-            g.fillRect(position.x + mapX, position.y + mapY, width, height);
-        }
-
-        // draw his weapons
-        for (Bullet bullet: bullets) {
-            g.drawImage(bulletImage, bullet.position.x - Map.TILE_SIZE / 2 + mapX, bullet.position.y - Map.TILE_SIZE / 2 + mapY, null);
-        }
-        if (!bullets.isEmpty()) {
-            if (facingRight) {
-                g.drawImage(gunRightImage, position.x + width + mapX, position.y + mapY, null);
-            } else {
-                g.drawImage(gunLeftImage, position.x - width + mapX, position.y + mapY, null);
-            }
-        }
-        if (sword) {
-            if (facingRight) {
-                g.drawImage(swordRightImage, position.x + width + mapX, position.y + height / 2 - swordHeight / 2 + mapY, null);
-            } else {
-                g.drawImage(swordLeftImage, position.x - swordWidth + mapX, position.y + height / 2 - swordHeight / 2 + mapY, null);
-            }
-        }
-
-        // draw his health bar
-        g.setColor(Color.BLACK);
-        g.fillRect(position.x + mapX, position.y + mapY - 10, width, 5);
-        g.setColor(Color.BLUE);
-        g.fillRect(position.x + mapX, position.y + mapY - 10, width * hp / maxHP, 5);
-    }
-
-    /**
      * Loads resources.
      */
     private void loadResources() {
         ImageIcon ii;
 
         ii = new ImageIcon(getClass().getResource("/resources/images/sota.png"));
-        images[PLAYER_STAND_RIGHT] = Util.getScaledImage(ii.getImage(), width, height);
+        standRightImage = Util.getScaledImage(ii.getImage(), width, height);
 
-        images[PLAYER_STAND_LEFT] = Util.getFlippedImage(images[PLAYER_STAND_RIGHT]);
+        standLeftImage = Util.getFlippedImage(standRightImage);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/sota-jump.png"));
-        images[PLAYER_JUMP_RIGHT] = Util.getScaledImage(ii.getImage(), width, height);
+        jumpRightImage = Util.getScaledImage(ii.getImage(), width, height);
 
-        images[PLAYER_JUMP_LEFT] = Util.getFlippedImage(images[PLAYER_JUMP_RIGHT]);
-
-        for (int i = 0; i < WALK_POSES; i++) {
-            // String url = "../resources/images/Player/p1_walk/PNG/p1_walk" + ((i < 9) ? "0" : "") + (i + 1) + ".png";
-            String url = "/resources/images/sota.png";
-            ii = new ImageIcon(getClass().getResource(url));
-            // facing right
-            images[PLAYER_WALK + i] = Util.getScaledImage(ii.getImage(), width, height);
-            // facing left
-            images[PLAYER_WALK + WALK_POSES + i] = Util.getFlippedImage(images[PLAYER_WALK + i]);
-        }
+        jumpLeftImage = Util.getFlippedImage(jumpRightImage);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/sota-attack.png"));
         attackRightImage = Util.getScaledImage(ii.getImage(), width, height);

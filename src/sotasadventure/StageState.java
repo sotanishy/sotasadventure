@@ -5,18 +5,10 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Image;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.ArrayList;
-import java.util.Properties;
 import java.util.prefs.Preferences;
 
 import javax.sound.sampled.AudioInputStream;
@@ -25,15 +17,12 @@ import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JOptionPane;
 
 /**
  * The class that deals with each stage.
  * @author Sota Nishiyama
  */
 public class StageState extends State {
-
     private StateMachine gameMode;
 
     private boolean run;
@@ -44,9 +33,12 @@ public class StageState extends State {
     private ArrayList<Enemy> enemies;
     private SpaceShip spaceShip;
 
+    private ArrayList<String> movement = new ArrayList<String>();
+
+    private Map map = new Map();
+
     private int timeLimit;
-    private double startTime = -1;
-    private double elapsedTime;
+    private double startTime;
     private int timeRemaining;
 
     private int lives;
@@ -57,40 +49,31 @@ public class StageState extends State {
     private ArrayList<int[]> gems = new ArrayList<int[]>();
     private int earnedGems = 0;
 
-    private final int TILE_SIZE = 50;
-
-    private ArrayList<String> movement = new ArrayList<String>();
-
     private Image bg;
-
-    private Map map = new Map();
-
     private Image healthImage;
     private Image coinImage;
     private Image gemImage;
     private Image clockImage;
 
+    private Clip healthSound;
     private Clip coinSound;
     private Clip gemSound;
-    private Clip healthSound;
     private Clip gameStartSound;
     private Clip gameClearSound;
     private Clip gameOverSound;
 
     /**
-     * Instanciates characters, loads images, and adds key listener.
+     * Instanciates characters, loads resources, and adds key listener.
      * @param gameMode The state machine of the game
      */
     public StageState(StateMachine gameMode) {
-
-        // set the state machine
         this.gameMode = gameMode;
 
-        // characters
-        sota = new Sota(TILE_SIZE, TILE_SIZE);
-        spaceShip = new SpaceShip(TILE_SIZE * 5, TILE_SIZE * 3);
-
         loadResources();
+
+        // characters
+        sota = new Sota(Constants.TILE_SIZE, Constants.TILE_SIZE);
+        spaceShip = new SpaceShip(Constants.TILE_SIZE * 5, Constants.TILE_SIZE * 3);
 
         // add key listener to move Sota
         addKeyListener(new KeyListener() {
@@ -146,14 +129,12 @@ public class StageState extends State {
                 }
             }
         });
+
         setFocusable(true);
     }
 
     @Override
     public void update(double elapsedTime) {
-
-        this.elapsedTime = elapsedTime;
-
         if (!run) return;
 
         if (startTime == -1) {
@@ -164,49 +145,45 @@ public class StageState extends State {
             sota.alive = false;
         }
 
-        // Sota
+        // enter the door
         if (movement.contains("up") &&
-            (map.getTile(sota.position.x / TILE_SIZE, sota.position.y / TILE_SIZE) == Map.DOOR_CLOSED || map.getTile(sota.position.x / TILE_SIZE + 1, sota.position.y / TILE_SIZE) == Map.DOOR_CLOSED)) {
+            (map.getTile(sota.position.x / Constants.TILE_SIZE, sota.position.y / Constants.TILE_SIZE) == Map.DOOR_CLOSED || map.getTile(sota.position.x / Constants.TILE_SIZE + 1, sota.position.y / Constants.TILE_SIZE) == Map.DOOR_CLOSED)) {
             map.next();
             sota.init(map);
             spaceShip.init(map.getSpaceShipPosition(), map.getSpaceShipSpeed());
-            enemies = map.getEnemies(TILE_SIZE, TILE_SIZE);
+            enemies = map.getEnemies(Constants.TILE_SIZE, Constants.TILE_SIZE);
             coins = map.getCoins();
             gems.clear();
         }
+
+        // move objects
         sota.move(movement, elapsedTime);
 
-        // update the space ship
-        spaceShip.update(elapsedTime);
-
-        // deploy enemies from the ship
-        if (spaceShip.alive) {
-            spaceShip.deployEnemies(enemies, elapsedTime, TILE_SIZE, TILE_SIZE, map.getEnemySpeed());
-        }
-
-        // enemies
         for (Enemy enemy: enemies) {
-            enemy.move(elapsedTime);
+            if (enemy.alive) {
+                enemy.move(elapsedTime);
+            }
         }
 
-        // collision detection with walls
-        solveSotasCollision();
+        if (spaceShip.alive) {
+            spaceShip.move(elapsedTime);
+            spaceShip.deployEnemies(enemies, elapsedTime, Constants.TILE_SIZE, Constants.TILE_SIZE, map.getEnemySpeed());
+        }
 
-        // collision detection with walls
+        // solve collision between objects and walls
+        sota.solveCollisionAgainstWalls(map);
 
-        int tileX, tileY;
-        int ground;
-        int groundRight;
+        for (Enemy enemy: enemies) {
+            if (enemy.alive) {
+                enemy.solveCollisionAgainstWalls(map);
+            }
+        }
 
-        int ceiling;
-        int ceilingRight;
+        if (spaceShip.alive) {
+            spaceShip.solveCollisionAgainstWalls(map);
+        }
 
-        int rightWall;
-        int rightWallBottom;
-
-        int leftWall;
-        int leftWallBottom;
-
+        // solve collision between an enemy and another enemy
         for (int i = 0; i < enemies.size() - 1; i++) {
             Enemy enemy1 = enemies.get(i);
             if (!enemy1.alive) continue;
@@ -215,213 +192,26 @@ public class StageState extends State {
                 Enemy enemy2 = enemies.get(j);
                 if (!enemy2.alive) continue;
 
-                if ((enemy1.position.y <= enemy2.position.y && enemy2.position.y <= enemy1.position.y + TILE_SIZE ||
-                        enemy2.position.y <= enemy1.position.y && enemy1.position.y <= enemy2.position.y + TILE_SIZE) &&
-                    (enemy1.position.x < enemy2.position.x && enemy2.position.x < enemy1.position.x + TILE_SIZE ||
-                        enemy2.position.x < enemy1.position.x && enemy1.position.x < enemy2.position.x + TILE_SIZE)) {
+                if (enemy1.position.y <= enemy2.position.y + enemy2.height && enemy1.position.y + enemy1.height >= enemy2.position.y &&
+                    enemy1.position.x <= enemy2.position.x + enemy2.width && enemy1.position.x + enemy1.width >= enemy2.position.x) {
                     enemy1.velocity.x *= -1;
                     enemy2.velocity.x *= -1;
-                    if (enemy1.position.x > enemy2.position.x) {
-                        enemy1.position.x = enemy2.position.x + TILE_SIZE;
+                    if (enemy1.position.x < enemy2.position.x) {
+                        enemy1.position.x = enemy2.position.x - enemy1.width;
                     } else {
-                        enemy2.position.x = enemy1.position.x + TILE_SIZE;
+                        enemy2.position.x = enemy1.position.x - enemy2.width;
                     }
                 }
             }
         }
 
-        // get the tile position where the enemy is
-        for (Enemy enemy: enemies) {
-
-            if (!enemy.alive) continue;
-
-            tileX = enemy.position.x / TILE_SIZE;
-            tileY = enemy.position.y / TILE_SIZE;
-
-            // an enemy falling out of the map
-            if (map.isOutOfMap(tileY + 1)) {
-                enemy.alive = false;
-                continue;
-            }
-
-            if (enemy.position.x < 0) {
-                tileX = -1;
-            }
-
-            if (tileX == -1) {
-                ground = Map.GROUND_CENTER;
-                ceiling = Map.GROUND_CENTER;
-            } else {
-                ground = map.getTile(tileX, tileY + 1);
-                ceiling = map.getTile(tileX, tileY);
-            }
-
-            if (enemy.position.x + TILE_SIZE >= map.getWidth()) {
-                groundRight = Map.GROUND_CENTER;
-                ceilingRight = Map.GROUND_CENTER;
-            } else {
-                groundRight = map.getTile(tileX + 1, tileY + 1);
-                ceilingRight = map.getTile(tileX + 1, tileY);
-            }
-
-            rightWall = ceilingRight;
-            rightWallBottom = groundRight;
-
-            leftWall = ceiling;
-            leftWallBottom = ground;
-
-            enemy.jumping = true;
-            enemy.swimming = false;
-
-            // turn around at the edge
-            if (!map.isGround(ground) && ground != Map.GROUND_HILL_LEFT && map.isGround(groundRight) && enemy.velocity.x < 0 ||
-                !map.isGround(groundRight) && groundRight != Map.GROUND_HILL_RIGHT && map.isGround(ground) && enemy.velocity.x > 0) {
-                enemy.velocity.x *= -1;
-            }
-
-            // check the ground
-            if (map.isGround(ground) && map.isGround(groundRight)) {
-                enemy.position.y = tileY * TILE_SIZE;
-                enemy.jumping = false;
-            }
-
-            // check the ceiling
-            if (map.isGround(ceiling) && map.isGround(ceilingRight)) {
-                enemy.position.y = (tileY + 1) * TILE_SIZE;
-            }
-
-            // check the right wall
-            if (map.isGround(rightWall) && map.isGround(rightWallBottom) && enemy.velocity.x > 0) {
-                enemy.position.x = tileX * TILE_SIZE;
-                enemy.velocity.x *= -1;
-            }
-
-            // check the left wall
-            if (map.isGround(leftWall) && map.isGround(leftWallBottom) && enemy.velocity.x < 0) {
-                enemy.position.x = (tileX + 1) * TILE_SIZE;
-                enemy.velocity.x *= -1;
-            }
-
-            // hill
-            if (enemy.velocity.x < 0) {
-                if (rightWall == Map.GROUND_HILL_LEFT) {
-                    enemy.position.y = tileY * TILE_SIZE + tileX * TILE_SIZE - enemy.position.x;
-                    enemy.jumping = false;
-                } else if (ground == Map.GROUND_HILL_LEFT) {
-                    enemy.position.y = tileY * TILE_SIZE;
-                    enemy.jumping = false;
-                } else if (groundRight == Map.GROUND_HILL_LEFT) {
-                    if (enemy.position.y >= (tileX + 1) * TILE_SIZE - enemy.position.x + tileY * TILE_SIZE) {
-                        enemy.position.y = (tileX + 1) * TILE_SIZE - enemy.position.x + tileY * TILE_SIZE;
-                        enemy.jumping = false;
-                    }
-                }
-
-                if (leftWall == Map.GROUND_HILL_RIGHT) {
-                    enemy.position.y = tileY * TILE_SIZE - (tileX + 1) * TILE_SIZE + enemy.position.x;
-                    enemy.jumping = false;
-                } else if (groundRight == Map.GROUND_HILL_RIGHT) {
-                    enemy.position.y = tileY * TILE_SIZE;
-                    enemy.jumping = false;
-                } else if (ground == Map.GROUND_HILL_RIGHT) {
-                    if (enemy.position.y >= tileY * TILE_SIZE - tileX * TILE_SIZE + enemy.position.x) {
-                        enemy.position.y = tileY * TILE_SIZE - tileX * TILE_SIZE + enemy.position.x;
-                        enemy.jumping = false;
-                    }
-                }
-            } else {
-                if (leftWall == Map.GROUND_HILL_RIGHT) {
-                    enemy.position.y = tileY * TILE_SIZE - (tileX + 1) * TILE_SIZE + enemy.position.x;
-                    enemy.jumping = false;
-                } else if (groundRight == Map.GROUND_HILL_RIGHT) {
-                    enemy.position.y = tileY * TILE_SIZE;
-                    enemy.jumping = false;
-                } else if (ground == Map.GROUND_HILL_RIGHT) {
-                    if (enemy.position.y >= tileY * TILE_SIZE - tileX * TILE_SIZE + enemy.position.x) {
-                        enemy.position.y = tileY * TILE_SIZE - tileX * TILE_SIZE + enemy.position.x;
-                        enemy.jumping = false;
-                    }
-                }
-
-                if (rightWall == Map.GROUND_HILL_LEFT) {
-                    enemy.position.y = tileY * TILE_SIZE + tileX * TILE_SIZE - enemy.position.x;
-                    enemy.jumping = false;
-                } else if (ground == Map.GROUND_HILL_LEFT) {
-                    enemy.position.y = tileY * TILE_SIZE;
-                    enemy.jumping = false;
-                } else if (groundRight == Map.GROUND_HILL_LEFT) {
-                    if (enemy.position.y >= (tileX + 1) * TILE_SIZE - enemy.position.x + tileY * TILE_SIZE) {
-                        enemy.position.y = (tileX + 1) * TILE_SIZE - enemy.position.x + tileY * TILE_SIZE;
-                        enemy.jumping = false;
-                    }
-                }
-            }
-
-            // diagonal collision
-            if (!map.isGround(ground) && map.isGround(groundRight) && !map.isGround(rightWall) && ground != Map.GROUND_HILL_LEFT && rightWall != Map.GROUND_HILL_LEFT) {
-                if (enemy.position.x - tileX * TILE_SIZE < enemy.position.y - tileY * TILE_SIZE) {
-                    enemy.position.x = tileX * TILE_SIZE;
-                    if (enemy.velocity.x > 0) enemy.velocity.x *= -1;
-                } else {
-                    enemy.position.y = tileY * TILE_SIZE;
-                }
-            }
-
-            if (!map.isGround(ceiling) && map.isGround(ceilingRight) && !map.isGround(rightWallBottom)) {
-                if (enemy.position.x - tileX * TILE_SIZE < (tileY + 1) * TILE_SIZE - enemy.position.y) {
-                    enemy.position.x = tileX * TILE_SIZE;
-                    if (enemy.velocity.x > 0) enemy.velocity.x *= -1;
-                } else {
-                    enemy.position.y = (tileY + 1) * TILE_SIZE;
-                }
-            }
-
-            if (map.isGround(ground) && !map.isGround(groundRight) && !map.isGround(leftWall) && groundRight != Map.GROUND_HILL_RIGHT && leftWall != Map.GROUND_HILL_RIGHT) {
-                if ((tileX + 1) * TILE_SIZE - enemy.position.x < enemy.position.y - tileY * TILE_SIZE) {
-                    enemy.position.x = (tileX + 1) * TILE_SIZE;
-                    if (enemy.velocity.x < 0) enemy.velocity.x *= -1;
-                } else {
-                    enemy.position.y = tileY * TILE_SIZE;
-                    enemy.jumping = false;
-                }
-            }
-
-            if (map.isGround(ceiling) && !map.isGround(ceilingRight) && !map.isGround(leftWallBottom)) {
-                if ((tileX + 1) * TILE_SIZE - enemy.position.x < (tileY + 1) * TILE_SIZE - enemy.position.y) {
-                    enemy.position.x = (tileX + 1) * TILE_SIZE;
-                    if (enemy.velocity.x < 0) enemy.velocity.x *= -1;
-                } else {
-                    enemy.position.y = (tileY + 1) * TILE_SIZE;
-                }
-            }
-
-            // in the water
-            if (map.isWater(enemy.position.x / TILE_SIZE, enemy.position.y / TILE_SIZE) || map.isWater(enemy.position.x / TILE_SIZE + 1, enemy.position.y / TILE_SIZE) || enemy.jumping && (map.isWater(enemy.position.x / TILE_SIZE, enemy.position.y / TILE_SIZE + 1) || map.isWater(enemy.position.x / TILE_SIZE + 1, enemy.position.y / TILE_SIZE + 1))) {
-                enemy.swimming = true;
-                enemy.jumping = false;
-            }
-
-        }
-
-        // collision detection against the enemy
-
+        // solve collision between Sota and an enemy
         for (Enemy enemy: enemies) {
             if (!enemy.alive) continue;
 
-            if ((sota.position.x <= enemy.position.x && sota.position.x + TILE_SIZE > enemy.position.x ||
-                    sota.position.x >= enemy.position.x && sota.position.x < enemy.position.x + TILE_SIZE) &&
-                (sota.position.y <= enemy.position.y && sota.position.y + TILE_SIZE > enemy.position.y ||
-                    sota.position.y >= enemy.position.y && sota.position.y < enemy.position.y + TILE_SIZE)) {
+            if (sota.position.x <= enemy.position.x + enemy.width && sota.position.x + sota.width >= enemy.position.x &&
+                sota.position.y <= enemy.position.y + enemy.height && sota.position.y + sota.height >= enemy.position.y) {
                 sota.attacked(elapsedTime, enemy.damage);
-            }
-        }
-
-        // collision detection between the space ship and walls
-        for (int i = spaceShip.position.y / TILE_SIZE; i <= (spaceShip.position.y + spaceShip.height) / TILE_SIZE; i++) {
-            if (map.isGround(map.getTile(spaceShip.position.x / TILE_SIZE, i)) ||
-                map.isGround(map.getTile((spaceShip.position.x + spaceShip.width) / TILE_SIZE, i))) {
-                spaceShip.velocity.x *= -1;
-                break;
             }
         }
 
@@ -430,21 +220,27 @@ public class StageState extends State {
             solveSotasCollisionAgainstShip(elapsedTime);
         }
 
-        // collision detection with walls
+        // solve collision between Sota and walls
+        sota.solveCollisionAgainstWalls(map);
 
-        solveSotasCollision();
-
-        // move the bullet
-        sota.moveBullets(elapsedTime);
+        // bullets
         bulletLoop: for (int i = 0; i < sota.bullets.size(); i++) {
             Bullet bullet = sota.bullets.get(i);
+
+            bullet.move(elapsedTime);
+            if (!bullet.alive) {
+                sota.bullets.remove(bullet);
+                i--;
+                continue;
+            }
 
             int x = bullet.position.x;
             int y = bullet.position.y;
 
-            if (map.isGround(map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE)) ||
-                (map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE) == Map.GROUND_HILL_LEFT && TILE_SIZE - x % TILE_SIZE < y % TILE_SIZE) ||
-                (map.getTile(x / Map.TILE_SIZE, y / Map.TILE_SIZE) == Map.GROUND_HILL_RIGHT && x % TILE_SIZE < y % TILE_SIZE)) {
+            // hit the wall
+            if (map.getTile(x / Constants.TILE_SIZE, y / Constants.TILE_SIZE) == Map.GROUND ||
+                (map.getTile(x / Constants.TILE_SIZE, y / Constants.TILE_SIZE) == Map.GROUND_HILL_LEFT && Constants.TILE_SIZE - x % Constants.TILE_SIZE < y % Constants.TILE_SIZE) ||
+                (map.getTile(x / Constants.TILE_SIZE, y / Constants.TILE_SIZE) == Map.GROUND_HILL_RIGHT && x % Constants.TILE_SIZE < y % Constants.TILE_SIZE)) {
                 sota.bullets.remove(bullet);
                 i--;
                 continue;
@@ -453,8 +249,8 @@ public class StageState extends State {
             for (Enemy enemy: enemies) {
                 if (!enemy.alive) continue;
 
-                if (x > enemy.position.x && x < enemy.position.x + Map.TILE_SIZE &&
-                    y > enemy.position.y && y < enemy.position.y + Map.TILE_SIZE) {
+                if (enemy.position.x <= x && x <= enemy.position.x + enemy.width &&
+                    enemy.position.y <= y && y <= enemy.position.y + enemy.height) {
                     enemy.attacked(elapsedTime, bullet.damage);
                     if (!enemy.alive) {
                         gems.add(new int[] {enemy.position.x, enemy.position.y});
@@ -464,41 +260,46 @@ public class StageState extends State {
                     continue bulletLoop;
                 }
             }
-            if (spaceShip.alive &&
-                x > spaceShip.position.x && x < spaceShip.position.x + spaceShip.width &&
-                y > spaceShip.position.y && y < spaceShip.position.y + spaceShip.height) {
-                spaceShip.attacked(elapsedTime, bullet.damage);
-                if (!spaceShip.alive) {
-                    gameClear = true;
-                    run = false;
-                    gameClearSound.setFramePosition(0);
-                    gameClearSound.start();
+            if (spaceShip.alive) {
+                if (spaceShip.position.x <= x && x <= spaceShip.position.x + spaceShip.width &&
+                    spaceShip.position.y <= y && y <= spaceShip.position.y + spaceShip.height) {
+                    spaceShip.attacked(elapsedTime, bullet.damage);
+                    if (!spaceShip.alive) {
+                        gameClear = true;
+                        run = false;
+                        gameClearSound.setFramePosition(0);
+                        gameClearSound.start();
+                    }
+                    sota.bullets.remove(bullet);
+                    i--;
+                    continue;
                 }
-                sota.bullets.remove(bullet);
-                i--;
-                continue;
             }
         }
 
         // sword
         if (sota.sword) {
+            if (sota.facingRight) {
+                sota.swordPosition.x = sota.position.x + sota.width;
+            } else {
+                sota.swordPosition.x = sota.position.x - sota.swordWidth;
+            }
+            sota.swordPosition.y = sota.position.y + sota.height / 2 - sota.swordHeight / 2;
+
             for (Enemy enemy: enemies) {
                 if (!enemy.alive) continue;
 
-                if (sota.position.y + sota.height / 2 + sota.swordHeight / 2 >= enemy.position.y && sota.position.y + sota.height / 2 - sota.swordHeight / 2 <= enemy.position.y + enemy.height) {
-                    if (sota.facingRight && sota.position.x + sota.width <= enemy.position.x + enemy.width && sota.position.x + sota.width + sota.swordWidth >= enemy.position.x ||
-                        !sota.facingRight && sota.position.x - sota.swordWidth <= enemy.position.x + enemy.width && sota.position.x >= enemy.position.x) {
-                        enemy.attacked(elapsedTime, sota.swordDamage);
-                        if (!enemy.alive) {
-                            gems.add(new int[] {enemy.position.x, enemy.position.y});
-                        }
+                if (sota.swordPosition.y <= enemy.position.y + enemy.height && sota.swordPosition.y + sota.swordHeight >= enemy.position.y &&
+                    sota.swordPosition.x <= enemy.position.x + enemy.width && sota.swordPosition.x + sota.swordWidth >= enemy.position.x) {
+                    enemy.attacked(elapsedTime, sota.swordDamage);
+                    if (!enemy.alive) {
+                        gems.add(new int[] {enemy.position.x, enemy.position.y});
                     }
                 }
             }
-            if (spaceShip.alive &&
-                sota.position.y + TILE_SIZE / 2 + sota.swordHeight / 2 >= spaceShip.position.y && sota.position.y + TILE_SIZE / 2 - sota.swordHeight / 2 <= spaceShip.position.y + spaceShip.height) {
-                if (sota.facingRight && sota.position.x + TILE_SIZE <= spaceShip.position.x + TILE_SIZE * spaceShip.width && sota.position.x + TILE_SIZE + sota.swordWidth >= spaceShip.position.x ||
-                    !sota.facingRight && sota.position.x - sota.swordWidth <= spaceShip.position.x + TILE_SIZE * spaceShip.width && sota.position.x >= spaceShip.position.x) {
+            if (spaceShip.alive) {
+                if (sota.swordPosition.y <= spaceShip.position.y + spaceShip.height && sota.swordPosition.y + sota.swordHeight >= spaceShip.position.y &&
+                    sota.swordPosition.x <= spaceShip.position.x + spaceShip.width && sota.swordPosition.x + sota.swordWidth >= spaceShip.position.x) {
                     spaceShip.attacked(elapsedTime, sota.swordDamage);
                     if (!spaceShip.alive) {
                         gameClear = true;
@@ -510,20 +311,20 @@ public class StageState extends State {
             }
         }
 
-        // collision detection with gems
-        for (int i = 0; i < gems.size(); i++) {
-            int[] gemPosition = gems.get(i);
-            if (sota.position.x <= gemPosition[0] + Map.TILE_SIZE / 2 && gemPosition[0] + Map.TILE_SIZE / 2 <= sota.position.x + Map.TILE_SIZE &&
-                sota.position.y <= gemPosition[1] + Map.TILE_SIZE / 2 && gemPosition[1] + Map.TILE_SIZE / 2 <= sota.position.y + Map.TILE_SIZE) {
-                gems.remove(i);
-                earnedGems++;
-                gemSound.setFramePosition(0);
-                gemSound.start();
-                if (earnedGems == 10) {
-                    earnedGems = 0;
+        // get coins
+        for (int i = 0; i < coins.size(); i++) {
+            int[] coinPosition = coins.get(i);
+            if (sota.position.x <= coinPosition[0] + Constants.TILE_SIZE / 2 && coinPosition[0] + Constants.TILE_SIZE / 2 <= sota.position.x + Constants.TILE_SIZE &&
+                sota.position.y <= coinPosition[1] + Constants.TILE_SIZE / 2 && coinPosition[1] + Constants.TILE_SIZE / 2 <= sota.position.y + Constants.TILE_SIZE) {
+                coins.remove(i--);
+                earnedCoins++;
+                coinSound.setFramePosition(0);
+                coinSound.start();
+                if (earnedCoins == Constants.COIN_MAX) {
+                    earnedCoins = 0;
                     lives++;
-                    if (lives == 100) {
-                        lives = 99;
+                    if (lives == Constants.LIFE_MAX) {
+                        lives = Constants.LIFE_MAX - 1;
                     }
                     healthSound.setFramePosition(0);
                     healthSound.start();
@@ -531,20 +332,20 @@ public class StageState extends State {
             }
         }
 
-        // collision detection with coins
-        for (int i = 0; i < coins.size(); i++) {
-            int[] coinPosition = coins.get(i);
-            if (sota.position.x <= coinPosition[0] + Map.TILE_SIZE / 2 && coinPosition[0] + Map.TILE_SIZE / 2 <= sota.position.x + Map.TILE_SIZE &&
-                sota.position.y <= coinPosition[1] + Map.TILE_SIZE / 2 && coinPosition[1] + Map.TILE_SIZE / 2 <= sota.position.y + Map.TILE_SIZE) {
-                coins.remove(i);
-                earnedCoins++;
-                coinSound.setFramePosition(0);
-                coinSound.start();
-                if (earnedCoins == 100) {
-                    earnedCoins = 0;
+        // get gems
+        for (int i = 0; i < gems.size(); i++) {
+            int[] gemPosition = gems.get(i);
+            if (sota.position.x <= gemPosition[0] + Constants.TILE_SIZE / 2 && gemPosition[0] + Constants.TILE_SIZE / 2 <= sota.position.x + Constants.TILE_SIZE &&
+                sota.position.y <= gemPosition[1] + Constants.TILE_SIZE / 2 && gemPosition[1] + Constants.TILE_SIZE / 2 <= sota.position.y + Constants.TILE_SIZE) {
+                gems.remove(i--);
+                earnedGems++;
+                gemSound.setFramePosition(0);
+                gemSound.start();
+                if (earnedGems == Constants.GEM_MAX) {
+                    earnedGems = 0;
                     lives++;
-                    if (lives == 100) {
-                        lives = 99;
+                    if (lives == Constants.LIFE_MAX) {
+                        lives = Constants.LIFE_MAX - 1;
                     }
                     healthSound.setFramePosition(0);
                     healthSound.start();
@@ -559,7 +360,6 @@ public class StageState extends State {
             gameOverSound.setFramePosition(0);
             gameOverSound.start();
         }
-
     }
 
     @Override
@@ -591,15 +391,15 @@ public class StageState extends State {
 
         if (sota.position.y < height / 2) {
             mapY = 0;
-        } else if (sota.position.y > (mapHeight - TILE_SIZE) - height / 2) {
-            mapY = height - (mapHeight - TILE_SIZE);
+        } else if (sota.position.y > (mapHeight - Constants.TILE_SIZE) - height / 2) {
+            mapY = height - (mapHeight - Constants.TILE_SIZE);
         } else {
             mapY = height / 2 - sota.position.y;
         }
 
         g.clearRect(0, 0, width, height);
 
-        // background
+        // draw background
         int i, j;
         for (i = 0; i < (int) (mapWidth / 256) + 1; i++) {
             for (j = 0; j < (int) (mapHeight / 256) + 1; j++) {
@@ -610,48 +410,39 @@ public class StageState extends State {
         // draw the map
         map.draw(g, mapX, mapY);
 
-        // draw the enemy ship and its health bar
+        // draw objects
         if (spaceShip.alive) {
             spaceShip.draw(g, mapX, mapY);
         }
 
-        // draw Sota, his weapons, and his health bar
-        sota.draw(g, mapX, mapY);
-
-        // draw enemies and health bar
         for (Enemy enemy: enemies) {
             if (enemy.alive) {
                 enemy.draw(g, mapX, mapY);
             }
         }
 
-        // draw gems
-        for (int[] gemPosition: gems) {
-            g.drawImage(gemImage, gemPosition[0] + mapX, gemPosition[1] + mapY, null);
-        }
+        sota.draw(g, mapX, mapY);
 
-        // draw coins
+        // draw resources
         for (int[] coinPosition: coins) {
             g.drawImage(coinImage, coinPosition[0] + mapX, coinPosition[1] + mapY, null);
         }
 
-        // draw the number of lives
+        for (int[] gemPosition: gems) {
+            g.drawImage(gemImage, gemPosition[0] + mapX, gemPosition[1] + mapY, null);
+        }
+
         g.setFont(new Font("Consolas", Font.PLAIN, 30));
         g.setColor(Color.WHITE);
         g.drawImage(healthImage, 10, 5, null);
         g.drawString(" x " + lives, 50, 40);
 
-        // draw the number of earned gems
-        g.drawImage(gemImage, 150, 5, null);
-        g.drawString(" x " + earnedGems, 190, 40);
+        g.drawImage(coinImage, 150, 5, null);
+        g.drawString(" x " + earnedCoins, 190, 40);
 
-        // draw the number of earned coins
-        g.drawImage(coinImage, 290, 5, null);
-        g.drawString(" x " + earnedCoins, 330, 40);
+        g.drawImage(gemImage, 290, 5, null);
+        g.drawString(" x " + earnedGems, 330, 40);
 
-        // draw the time remaining
-        g.setFont(new Font("Consolas", Font.PLAIN, 30));
-        g.setColor(Color.WHITE);
         g.drawImage(clockImage, 1000, 5, null);
         g.drawString(timeRemaining + "", 1040, 40);
 
@@ -680,12 +471,18 @@ public class StageState extends State {
 
         map.set(stage);
 
+        movement.clear();
+
         timeLimit = map.getTimeLimit();
+        startTime = -1;
 
         sota.init(map);
         sota.initHP();
+
         spaceShip.init(map.getSpaceShipPosition(), map.getSpaceShipSpeed());
-        enemies = map.getEnemies(TILE_SIZE, TILE_SIZE);
+
+        enemies = map.getEnemies(Constants.TILE_SIZE, Constants.TILE_SIZE);
+
         coins = map.getCoins();
         gems.clear();
 
@@ -703,10 +500,6 @@ public class StageState extends State {
 
     @Override
     public void exit() {
-        movement.clear();
-        run = false;
-        startTime = -1;
-
         Preferences prefs = Preferences.userNodeForPackage(StageState.class);
         if (lives == 0) {
             lives = 5;
@@ -723,160 +516,6 @@ public class StageState extends State {
 
         if (gameClear) {
             prefs.put(map.getName(), "cleared");
-        }
-    }
-
-    /**
-     * Solves Sota's collision against the wall.
-     */
-    private void solveSotasCollision() {
-
-        // get the tile position where the player is
-        int tileX = sota.position.x / TILE_SIZE;
-        int tileY = sota.position.y / TILE_SIZE;
-
-        // left edge of the map
-        if (sota.position.x < 0) {
-            tileX = -1;
-        }
-        if (sota.position.y < 0) {
-            tileY = -1;
-        }
-
-        int ground;
-        int groundRight;
-
-        int ceiling;
-        int ceilingRight;
-
-        int rightWall;
-        int rightWallBottom;
-
-        int leftWall;
-        int leftWallBottom;
-
-        if (tileX == -1) { // left edge of the map
-            ground = Map.GROUND_CENTER;
-            ceiling = Map.GROUND_CENTER;
-        } else {
-            ground = map.getTile(tileX, tileY + 1);
-            ceiling = map.getTile(tileX, tileY);
-        }
-
-        if (sota.position.x + TILE_SIZE >= map.getWidth()) { // right edge of the map
-            groundRight = Map.GROUND_CENTER;
-            ceilingRight = Map.GROUND_CENTER;
-        } else {
-            groundRight = map.getTile(tileX + 1, tileY + 1);
-            ceilingRight = map.getTile(tileX + 1, tileY);
-        }
-
-        if (tileY == -1) {
-            ceiling = Map.GROUND_CENTER;
-            ceilingRight = Map.GROUND_CENTER;
-        }
-
-        rightWall = ceilingRight;
-        rightWallBottom = groundRight;
-
-        leftWall = ceiling;
-        leftWallBottom = ground;
-
-        sota.jumping = true;
-        sota.swimming = false;
-
-        // check the ground
-        if (map.isGround(ground) && map.isGround(groundRight)) {
-            sota.position.y = tileY * TILE_SIZE;
-            sota.jumping = false;
-        }
-
-        // check the ceiling
-        if (map.isGround(ceiling) && map.isGround(ceilingRight)) {
-            sota.position.y = (tileY + 1) * TILE_SIZE;
-        }
-
-        // check the right wall
-        if (map.isGround(rightWall) && map.isGround(rightWallBottom)) {
-            sota.position.x = tileX * TILE_SIZE;
-        }
-
-        // check the left wall
-        if (map.isGround(leftWall) && map.isGround(leftWallBottom)) {
-            sota.position.x = (tileX + 1) * TILE_SIZE;
-        }
-
-        // hill
-        if (rightWall == Map.GROUND_HILL_LEFT) {
-            sota.position.y = tileY * TILE_SIZE + tileX * TILE_SIZE - sota.position.x;
-            sota.jumping = false;
-        } else if (ground == Map.GROUND_HILL_LEFT) {
-            sota.position.y = tileY * TILE_SIZE;
-            sota.jumping = false;
-        } else if (groundRight == Map.GROUND_HILL_LEFT) {
-            if (sota.position.y >= (tileX + 1) * TILE_SIZE - sota.position.x + tileY * TILE_SIZE) {
-                sota.position.y = (tileX + 1) * TILE_SIZE - sota.position.x + tileY * TILE_SIZE;
-                sota.jumping = false;
-            }
-        }
-
-        if (leftWall == Map.GROUND_HILL_RIGHT) {
-            sota.position.y = tileY * TILE_SIZE - (tileX + 1) * TILE_SIZE + sota.position.x;
-            sota.jumping = false;
-        } else if (groundRight == Map.GROUND_HILL_RIGHT) {
-            sota.position.y = tileY * TILE_SIZE;
-            sota.jumping = false;
-        } else if (ground == Map.GROUND_HILL_RIGHT) {
-            if (sota.position.y >= tileY * TILE_SIZE - tileX * TILE_SIZE + sota.position.x) {
-                sota.position.y = tileY * TILE_SIZE - tileX * TILE_SIZE + sota.position.x;
-                sota.jumping = false;
-            }
-        }
-
-        // diagonal collision
-        if (!map.isGround(ground) && map.isGround(groundRight) && !map.isGround(rightWall) && ground != Map.GROUND_HILL_LEFT && rightWall != Map.GROUND_HILL_LEFT) {
-            if (sota.position.x - tileX * TILE_SIZE < sota.position.y - tileY * TILE_SIZE) {
-                sota.position.x = tileX * TILE_SIZE;
-            } else {
-                sota.position.y = tileY * TILE_SIZE;
-                sota.jumping = false;
-            }
-        }
-
-        if (!map.isGround(ceiling) && map.isGround(ceilingRight) && !map.isGround(rightWallBottom)) {
-            if (sota.position.x - tileX * TILE_SIZE < (tileY + 1) * TILE_SIZE - sota.position.y) {
-                sota.position.x = tileX * TILE_SIZE;
-            } else {
-                sota.position.y = (tileY + 1) * TILE_SIZE;
-            }
-        }
-
-        if (map.isGround(ground) && !map.isGround(groundRight) && !map.isGround(leftWall) && groundRight != Map.GROUND_HILL_RIGHT && leftWall != Map.GROUND_HILL_RIGHT) {
-            if ((tileX + 1) * TILE_SIZE - sota.position.x < sota.position.y - tileY * TILE_SIZE) {
-                sota.position.x = (tileX + 1) * TILE_SIZE;
-            } else {
-                sota.position.y = tileY * TILE_SIZE;
-                sota.jumping = false;
-            }
-        }
-
-        if (map.isGround(ceiling) && !map.isGround(ceilingRight) && !map.isGround(leftWallBottom)) {
-            if ((tileX + 1) * TILE_SIZE - sota.position.x < (tileY + 1) * TILE_SIZE - sota.position.y) {
-                sota.position.x = (tileX + 1) * TILE_SIZE;
-            } else {
-                sota.position.y = (tileY + 1) * TILE_SIZE;
-            }
-        }
-
-        // in the water
-        if (map.isWater(sota.position.x / TILE_SIZE, sota.position.y / TILE_SIZE) || map.isWater(sota.position.x / TILE_SIZE + 1, sota.position.y / TILE_SIZE) || sota.jumping && (map.isWater(sota.position.x / TILE_SIZE, sota.position.y / TILE_SIZE + 1) || map.isWater(sota.position.x / TILE_SIZE + 1, sota.position.y / TILE_SIZE + 1))) {
-            sota.swimming = true;
-            sota.jumping = false;
-        }
-
-        // game over
-        if (map.isOutOfMap(tileY + 1)) {
-            sota.alive = false;
         }
     }
 
@@ -961,16 +600,16 @@ public class StageState extends State {
         bg = ii.getImage();
 
         ii = new ImageIcon(getClass().getResource("/resources/images/heart.png"));
-        healthImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        healthImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/coin.png"));
-        coinImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        coinImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/gem.png"));
-        gemImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        gemImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/clock.png"));
-        clockImage = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        clockImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         try {
             AudioInputStream audioIn = AudioSystem.getAudioInputStream(getClass().getResource("/resources/audio/coin.wav"));

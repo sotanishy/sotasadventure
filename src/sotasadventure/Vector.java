@@ -2,9 +2,7 @@ package sotasadventure;
 
 /**
  * The class that represents and operates vectors.
- * 
  * @author Sota Nishiyama
- * @since  1.0
  */
 public class Vector {
     public int x;
@@ -20,7 +18,6 @@ public class Vector {
 
     /**
      * Constructs a vector with x and y values.
-     * 
      * @param x the x value
      * @param y the y value
      */
@@ -31,22 +28,10 @@ public class Vector {
 
     /**
      * Adds another vector to this vector.
-     * 
      * @param v the addend vector
      */
     public void add(Vector v) {
         this.x += v.x;
         this.y += v.y;
-    }
-
-    /**
-     * Sets the values of this vector.
-     * 
-     * @param x the x value
-     * @param y the y value
-     */
-    public void set(int x, int y) {
-        this.x = x;
-        this.y = y;
     }
 }

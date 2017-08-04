@@ -53,7 +53,7 @@ public class Stage {
             e.printStackTrace();
         }
 
-        loadImages();
+        loadResources();
     }
 
     /**
@@ -128,28 +128,28 @@ public class Stage {
     /**
      * Loads images of the stage.
      */
-    private void loadImages() {
+    private void loadResources() {
         ImageIcon ii;
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name +"/surface.png"));
-        surface = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        surface = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name +"/center.png"));
-        center = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        center = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name +"/right.png"));
-        right = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        right = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         left = Util.getFlippedImage(right);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name + "/mid.png"));
-        mid = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        mid = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name + "/hillRight.png"));
-        hillRight = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        hillRight = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/" + name + "/hillRight2.png"));
-        hillRight2 = Util.getScaledImage(ii.getImage(), Map.TILE_SIZE, Map.TILE_SIZE);
+        hillRight2 = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         hillLeft = Util.getFlippedImage(hillRight);
 

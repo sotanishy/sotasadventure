@@ -12,9 +12,8 @@ import javax.swing.ImageIcon;
  * @author Sota Nishiyama
  */
 public class Map {
-    public static final int GROUND_NONE = 0;
-    public static final int GROUND_SURFACE = 1;
-    public static final int GROUND_CENTER = 2;
+    public static final int NONE = 0;
+    public static final int GROUND = 1;
     public static final int START = 3;
     public static final int DOOR_CLOSED = 5;
     public static final int DOOR_OPENED = 6;
@@ -25,9 +24,6 @@ public class Map {
     public static final int GROUND_HILL_LEFT = 11;
     public static final int WATER = 12;
 
-    public static final int TILE_SIZE = 50;
-
-    private Image[] mapImages = new Image[14];
     private Image doorOpenImage;
     private Image doorOpenTopImage;
     private Image doorClosedImage;
@@ -37,8 +33,6 @@ public class Map {
 
     private Stage currentStage;
     private int stageNum;
-
-    public double friction;
 
     public HashMap<String, Stage> stages = new HashMap<String, Stage>();
 
@@ -54,7 +48,7 @@ public class Map {
         stages.put("oceania", new Stage("oceania"));
         stages.put("antarctica", new Stage("antarctica"));
 
-        loadImage();
+        loadResources();
     }
 
     /**
@@ -91,7 +85,7 @@ public class Map {
      */
     public int getTile(int x, int y) {
         if (x < 0 || x >= currentStage.map[stageNum][0].length ||
-            y < 0 || y >= currentStage.map[stageNum].length) return GROUND_CENTER;
+            y < 0 || y >= currentStage.map[stageNum].length) return GROUND;
         return currentStage.map[stageNum][y][x];
     }
 
@@ -102,8 +96,8 @@ public class Map {
     public Vector getStartingPoint() {
         for (int i = 0; i < currentStage.map[stageNum].length; i++) {
             for (int j = 0; j < currentStage.map[stageNum][i].length; j++) {
-                if (currentStage.map[stageNum][i][j] == Map.START || currentStage.map[stageNum][i][j] == Map.DOOR_OPENED) {
-                    return new Vector(j * TILE_SIZE, i * TILE_SIZE);
+                if (currentStage.map[stageNum][i][j] == START || currentStage.map[stageNum][i][j] == DOOR_OPENED) {
+                    return new Vector(j * Constants.TILE_SIZE, i * Constants.TILE_SIZE);
                 }
             }
         }
@@ -117,8 +111,8 @@ public class Map {
     public Vector getSpaceShipPosition() {
         for (int i = 0; i < currentStage.map[stageNum].length; i++) {
             for (int j = 0; j < currentStage.map[stageNum][i].length; j++) {
-                if (currentStage.map[stageNum][i][j] == Map.SHIP) {
-                    return new Vector(j * TILE_SIZE, i * TILE_SIZE);
+                if (currentStage.map[stageNum][i][j] == SHIP) {
+                    return new Vector(j * Constants.TILE_SIZE, i * Constants.TILE_SIZE);
                 }
             }
         }
@@ -160,9 +154,9 @@ public class Map {
 
         for (int i = 0; i < currentStage.map[stageNum].length; i++) {
             for (int j = 0; j < currentStage.map[stageNum][i].length; j++) {
-                if (currentStage.map[stageNum][i][j] == Map.ENEMY) {
+                if (currentStage.map[stageNum][i][j] == ENEMY) {
                     Enemy enemy = new Enemy(width, height);
-                    enemy.init(j, i, getEnemySpeed());
+                    enemy.init(j * Constants.TILE_SIZE, i * Constants.TILE_SIZE, getEnemySpeed());
                     enemies.add(enemy);
                 }
             }
@@ -179,8 +173,8 @@ public class Map {
 
         for (int i = 0; i < currentStage.map[stageNum].length; i++) {
             for (int j = 0; j < currentStage.map[stageNum][i].length; j++) {
-                if (currentStage.map[stageNum][i][j] == Map.COIN) {
-                    coins.add(new int[] {j * TILE_SIZE, i * TILE_SIZE});
+                if (currentStage.map[stageNum][i][j] == COIN) {
+                    coins.add(new int[] {j * Constants.TILE_SIZE, i * Constants.TILE_SIZE});
                 }
             }
         }
@@ -200,7 +194,7 @@ public class Map {
      * @return int the width of the map
      */
     public int getWidth() {
-        return currentStage.map[stageNum][0].length * TILE_SIZE;
+        return currentStage.map[stageNum][0].length * Constants.TILE_SIZE;
 
     }
 
@@ -209,7 +203,7 @@ public class Map {
      * @return int the height of the map
      */
     public int getHeight() {
-        return currentStage.map[stageNum].length * TILE_SIZE;
+        return currentStage.map[stageNum].length * Constants.TILE_SIZE;
 
     }
 
@@ -226,25 +220,13 @@ public class Map {
     }
 
     /**
-     * Checks if the given tile is ground.
-     * @param tile the type of the tile
-     * @return boolean true if the given tile is ground
-     */
-    public boolean isGround(int tile) {
-        if (tile == GROUND_CENTER || tile == GROUND_SURFACE) {
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Checks if the given tile is water.
      * @param x the x coordinate of the tile
      * @param y the y coordinate of the tile
      * @return boolean true if the given tile is water
      */
     public boolean isWater(int x, int y) {
-        if (!isGround(getTile(x, y)) && (getTile(x, y) == WATER || (getTile(x - 1, y) == WATER) || getTile(x + 1, y) == WATER || getTile(x, y - 1) == WATER)) {
+        if (getTile(x, y) != GROUND && (getTile(x, y) == WATER || (getTile(x - 1, y) == WATER) || getTile(x + 1, y) == WATER || getTile(x, y - 1) == WATER)) {
             return true;
         } else {
             return false;
@@ -259,59 +241,64 @@ public class Map {
      */
     public void draw(Graphics g, int mapX, int mapY) {
         for (int i = 0; i < currentStage.map[stageNum].length; i++) {
-            if (i * TILE_SIZE + mapY <= -TILE_SIZE || i * TILE_SIZE + mapY > getHeight()) continue;
+            if (i * Constants.TILE_SIZE + mapY <= -Constants.TILE_SIZE || i * Constants.TILE_SIZE + mapY > getHeight()) continue;
 
             for (int j = 0; j < currentStage.map[stageNum][i].length; j++) {
-                if (j * TILE_SIZE + mapX <= -TILE_SIZE || j * TILE_SIZE + mapX > getWidth()) continue;
+                if (j * Constants.TILE_SIZE + mapX <= -Constants.TILE_SIZE || j * Constants.TILE_SIZE + mapX > getWidth()) continue;
 
                 if (isWater(j, i)) {
-                    g.drawImage(waterImage, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
+                    g.drawImage(waterImage, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
                 }
 
                 switch (currentStage.map[stageNum][i][j]) {
-                    case GROUND_SURFACE:
-                    if (j > 0 && !isGround(currentStage.map[stageNum][i][j - 1]) && currentStage.map[stageNum][i][j - 1] != GROUND_HILL_LEFT &&
-                        j < currentStage.map[stageNum][i].length - 1 && !isGround(currentStage.map[stageNum][i][j + 1]) && currentStage.map[stageNum][i][j + 1] != GROUND_HILL_RIGHT) { // both
-                        g.drawImage(currentStage.surface, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    } else if (j > 0 && !isGround(currentStage.map[stageNum][i][j - 1]) && currentStage.map[stageNum][i][j - 1] != GROUND_HILL_LEFT) { // left edge
-                        g.drawImage(currentStage.left, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    } else if (j < currentStage.map[stageNum][i].length - 1 && !isGround(currentStage.map[stageNum][i][j + 1]) && currentStage.map[stageNum][i][j + 1] != GROUND_HILL_RIGHT) { // right edge
-                        g.drawImage(currentStage.right, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    } else{
-                        g.drawImage(currentStage.mid, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    }
-                    break;
+                    case GROUND:
+                    if (i > 0 && currentStage.map[stageNum][i - 1][j] != GROUND && currentStage.map[stageNum][i - 1][j] != GROUND_HILL_LEFT && currentStage.map[stageNum][i - 1][j] != GROUND_HILL_RIGHT) { // surface
 
-                    case GROUND_CENTER:
-                    if (i > 0 && currentStage.map[stageNum][i - 1][j] == GROUND_HILL_RIGHT) {
-                        g.drawImage(currentStage.hillRight2, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    } else if (i > 0 && currentStage.map[stageNum][i - 1][j] == GROUND_HILL_LEFT) {
-                        g.drawImage(currentStage.hillLeft2, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
+                        if (j > 0 && currentStage.map[stageNum][i][j - 1] != GROUND && currentStage.map[stageNum][i][j - 1] != GROUND_HILL_LEFT &&
+                            j < currentStage.map[stageNum][i].length - 1 && currentStage.map[stageNum][i][j + 1] != GROUND && currentStage.map[stageNum][i][j + 1] != GROUND_HILL_RIGHT) { // both
+                            g.drawImage(currentStage.surface, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        } else if (j > 0 && currentStage.map[stageNum][i][j - 1] != GROUND && currentStage.map[stageNum][i][j - 1] != GROUND_HILL_LEFT) { // left edge
+                            g.drawImage(currentStage.left, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        } else if (j < currentStage.map[stageNum][i].length - 1 && currentStage.map[stageNum][i][j + 1] != GROUND && currentStage.map[stageNum][i][j + 1] != GROUND_HILL_RIGHT) { // right edge
+                            g.drawImage(currentStage.right, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        } else {
+                            g.drawImage(currentStage.mid, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        }
+
                     } else {
-                        g.drawImage(currentStage.center, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
+
+                        if (i > 0 && currentStage.map[stageNum][i - 1][j] == GROUND_HILL_RIGHT) {
+                            g.drawImage(currentStage.hillRight2, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        } else if (i > 0 && currentStage.map[stageNum][i - 1][j] == GROUND_HILL_LEFT) {
+                            g.drawImage(currentStage.hillLeft2, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        } else {
+                            g.drawImage(currentStage.center, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                        }
+
                     }
+
                     break;
 
                     case START:
-                    g.drawImage(signImage, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
+                    g.drawImage(signImage, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
                     break;
 
                     case DOOR_CLOSED:
-                    g.drawImage(doorClosedImage, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    g.drawImage(doorClosedTopImage, j * TILE_SIZE + mapX, i * TILE_SIZE - TILE_SIZE + mapY, null);
+                    g.drawImage(doorClosedImage, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                    g.drawImage(doorClosedTopImage, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE - Constants.TILE_SIZE + mapY, null);
                     break;
 
                     case DOOR_OPENED:
-                    g.drawImage(doorOpenImage, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
-                    g.drawImage(doorOpenTopImage, j * TILE_SIZE + mapX, i * TILE_SIZE - TILE_SIZE + mapY, null);
+                    g.drawImage(doorOpenImage, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
+                    g.drawImage(doorOpenTopImage, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE - Constants.TILE_SIZE + mapY, null);
                     break;
 
                     case GROUND_HILL_RIGHT:
-                    g.drawImage(currentStage.hillRight, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
+                    g.drawImage(currentStage.hillRight, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
                     break;
 
                     case GROUND_HILL_LEFT:
-                    g.drawImage(currentStage.hillLeft, j * TILE_SIZE + mapX, i * TILE_SIZE + mapY, null);
+                    g.drawImage(currentStage.hillLeft, j * Constants.TILE_SIZE + mapX, i * Constants.TILE_SIZE + mapY, null);
                     break;
                 }
             }
@@ -321,25 +308,25 @@ public class Map {
     /**
      * Loads images of the map.
      */
-    private void loadImage() {
+    private void loadResources() {
         ImageIcon ii;
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_closedMid.png"));
-        doorClosedImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        doorClosedImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_closedTop.png"));
-        doorClosedTopImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        doorClosedTopImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_openMid.png"));
-        doorOpenImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        doorOpenImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/door_openTop.png"));
-        doorOpenTopImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        doorOpenTopImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/sign.png"));
-        signImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        signImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
 
         ii = new ImageIcon(getClass().getResource("/resources/images/Tiles/liquidWater.png"));
-        waterImage = Util.getScaledImage(ii.getImage(), TILE_SIZE, TILE_SIZE);
+        waterImage = Util.getScaledImage(ii.getImage(), Constants.TILE_SIZE, Constants.TILE_SIZE);
     }
 }

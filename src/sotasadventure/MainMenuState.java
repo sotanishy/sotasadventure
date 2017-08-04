@@ -5,8 +5,6 @@ import java.awt.Image;
 import java.awt.Graphics;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -26,8 +24,8 @@ public class MainMenuState extends State {
     private Image background;
 
     private ImageIcon logo;
-    private ImageIcon startImage;
-    private ImageIcon startImageHover;
+    private ImageIcon startIcon;
+    private ImageIcon startIconHover;
 
     /**
      * Sets the layout and loads images.
@@ -36,35 +34,25 @@ public class MainMenuState extends State {
     public MainMenuState(StateMachine gameMode) {
         this.gameMode = gameMode;
 
-        loadImages();
+        loadResources();
 
         setLayout(new BoxLayout(this, BoxLayout.PAGE_AXIS));
 
-        // label
         JLabel title = new JLabel(logo);
         title.setAlignmentX(CENTER_ALIGNMENT);
 
-        // button
-        JButton start = new JButton(startImage);
+        JButton start = new JButton(startIcon);
+        start.setAlignmentX(CENTER_ALIGNMENT);
         start.setBorder(BorderFactory.createEmptyBorder());
         start.setContentAreaFilled(false);
-        start.setAlignmentX(CENTER_ALIGNMENT);
+        start.setIcon(startIcon);
+        start.setRolloverEnabled(true);
+        start.setRolloverIcon(startIconHover);
 
         start.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 gameMode.change("worldmap");
-            }
-        });
-        start.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                start.setIcon(startImageHover);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                start.setIcon(startImage);
             }
         });
 
@@ -94,9 +82,9 @@ public class MainMenuState extends State {
     public void exit() {}
 
     /**
-     * Loads images of contents in the main menu.
+     * Loads images.
      */
-    private void loadImages() {
+    private void loadResources() {
         ImageIcon ii;
 
         ii = new ImageIcon(getClass().getResource("/resources/images/mainmenu-bg.png"));
@@ -106,9 +94,9 @@ public class MainMenuState extends State {
         logo = new ImageIcon(Util.getScaledImage(ii.getImage(), 640, 267));
 
         ii = new ImageIcon(getClass().getResource("/resources/images/buttons/start_button.png"));
-        startImage = new ImageIcon(Util.getScaledImage(ii.getImage(), 200, 100));
+        startIcon = new ImageIcon(Util.getScaledImage(ii.getImage(), 200, 100));
 
         ii = new ImageIcon(getClass().getResource("/resources/images/buttons/start_button_hover.png"));
-        startImageHover = new ImageIcon(Util.getScaledImage(ii.getImage(), 200, 100));
+        startIconHover = new ImageIcon(Util.getScaledImage(ii.getImage(), 200, 100));
     }
 }

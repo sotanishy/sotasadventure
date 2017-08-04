@@ -10,31 +10,13 @@ import javax.swing.ImageIcon;
  * The class that represents an enemy.
  * @author Sota Nishiyama
  */
-public class Enemy {
-
-    public Vector position = new Vector();
-    public Vector velocity = new Vector();
-
-    public int width;
-    public int height;
-
+public class Enemy extends Sprite {
     private final int MAX_SPEED_Y = 25;
 
-    public boolean jumping;
-    public boolean swimming;
-    public boolean alive;
+    private int speedX;
 
-    public boolean invincible;
-    private double attackedTime;
-    private final double INVINCIBLE_DURATION = 1;
-
-    private Image imageFacingLeft;
-    private Image imageFacingRight;
-
-    public int maxHP = 3;
-    public int hp;
-
-    public int damage = 1;
+    private Image leftImage;
+    private Image rightImage;
 
     /**
      * Sets the size of enemies and loads images of enemies.
@@ -42,9 +24,12 @@ public class Enemy {
      * @param height the height of enemies
      */
     public Enemy(int width, int height) {
-        this.width = width;
-        this.height = height;
-        loadImages();
+        super(width, height);
+        maxHP = 3;
+        damage = 1;
+        invincibleDuration = 1;
+        healthColor = Color.RED;
+        loadResources();
     }
 
     /**
@@ -54,22 +39,10 @@ public class Enemy {
      * @param speedX the speed of the enemy
      */
     public void init(int x, int y, int speedX) {
-        // initialize the position
-        position.x = x * Map.TILE_SIZE;
-        position.y = y * Map.TILE_SIZE;
+        super.init(x, y);
 
-        // initialize the velocity
+        this.speedX = speedX;
         velocity.x = -speedX;
-        velocity.y = 0;
-
-        // initialize the HP and other conditions
-        hp = maxHP;
-
-        // initialize conditions
-        jumping = false;
-        swimming = false;
-        alive = true;
-        invincible = false;
     }
 
     /**
@@ -77,13 +50,12 @@ public class Enemy {
      * @param elapsedTime the time elapsed since the game started
      */
     public void move(double elapsedTime) {
-
         int vx = velocity.x;
         int vy = velocity.y;
 
         // y velocity
         // gravity
-        vy += 3;
+        vy += Constants.GRAVITY;
 
         // max speed
         if (vy > MAX_SPEED_Y) {
@@ -94,34 +66,131 @@ public class Enemy {
 
         // resistance
         if (swimming) {
-            vx *= 0.5;
-            vy *= 0.5;
+            vx = (int) (speedX * Constants.WATER_RESISTANCE * (velocity.x > 0 ? 1 : -1));
+            vy *= Constants.WATER_RESISTANCE;
         }
 
         // set the velocity and the position
-        velocity.set(velocity.x, vy);
-        position.add(velocity);
+        velocity.x = vx;
+        velocity.y = vy;
 
-        // make the enemy not invincible when a certain time has passed since attacked
-        if (elapsedTime - attackedTime >= INVINCIBLE_DURATION) {
-            invincible = false;
-        }
+        super.move(elapsedTime);
     }
 
     /**
-     * Executed when the enemy is attacked by Sota.
-     * @param elapsedTime the time elapsed since the game started.
-     * @param damage the damage
+     *
      */
-    public void attacked(double elapsedTime, int damage) {
-        if (invincible) return;
+    @Override
+    public void solveCollisionAgainstWalls(Map map) {
+        int tileX = position.x / Constants.TILE_SIZE;
+        int tileY = position.y / Constants.TILE_SIZE;
 
-        invincible = true;
-        attackedTime = elapsedTime;
+        if (position.x < 0) {
+            tileX = -1;
+        }
+        if (position.y < 0) {
+            tileY = -1;
+        }
 
-        hp -= damage;
-        if (hp <= 0) {
-            alive = false;
+        int upperLeft;
+        int upperRight;
+        int lowerLeft;
+        int lowerRight;
+
+        if (tileX == -1) {
+            upperLeft = Map.GROUND;
+            lowerLeft = Map.GROUND;
+        } else {
+            upperLeft = map.getTile(tileX, tileY);
+            lowerLeft = map.getTile(tileX, tileY + 1);
+        }
+
+        if (position.x + width >= map.getWidth()) {
+            upperRight = Map.GROUND;
+            lowerRight = Map.GROUND;
+        } else {
+            upperRight = map.getTile(tileX + 1, tileY);
+            lowerRight = map.getTile(tileX + 1, tileY + 1);
+        }
+
+        if (tileY == -1) {
+            upperLeft = Map.GROUND;
+            upperRight = Map.GROUND;
+        }
+
+        // turn around at the edge
+        if (lowerLeft != Map.GROUND && lowerLeft != Map.GROUND_HILL_LEFT && lowerRight == Map.GROUND && velocity.x < 0 ||
+            lowerRight != Map.GROUND && lowerRight != Map.GROUND_HILL_RIGHT && lowerLeft == Map.GROUND && velocity.x > 0) {
+            velocity.x *= -1;
+        }
+
+        // hill
+        if (velocity.x < 0) {
+            if (upperRight == Map.GROUND_HILL_LEFT) {
+                position.y = tileY * Constants.TILE_SIZE + tileX * Constants.TILE_SIZE - position.x;
+                jumping = false;
+            } else if (lowerLeft == Map.GROUND_HILL_LEFT) {
+                position.y = tileY * Constants.TILE_SIZE;
+                jumping = false;
+            } else if (lowerRight == Map.GROUND_HILL_LEFT) {
+                if (position.y >= (tileX + 1) * Constants.TILE_SIZE - position.x + tileY * Constants.TILE_SIZE) {
+                    position.y = (tileX + 1) * Constants.TILE_SIZE - position.x + tileY * Constants.TILE_SIZE;
+                    jumping = false;
+                }
+            }
+
+            if (upperLeft == Map.GROUND_HILL_RIGHT) {
+                position.y = tileY * Constants.TILE_SIZE - (tileX + 1) * Constants.TILE_SIZE + position.x;
+                jumping = false;
+            } else if (lowerRight == Map.GROUND_HILL_RIGHT) {
+                position.y = tileY * Constants.TILE_SIZE;
+                jumping = false;
+            } else if (lowerLeft == Map.GROUND_HILL_RIGHT) {
+                if (position.y >= tileY * Constants.TILE_SIZE - tileX * Constants.TILE_SIZE + position.x) {
+                    position.y = tileY * Constants.TILE_SIZE - tileX * Constants.TILE_SIZE + position.x;
+                    jumping = false;
+                }
+            }
+        } else {
+            if (upperLeft == Map.GROUND_HILL_RIGHT) {
+                position.y = tileY * Constants.TILE_SIZE - (tileX + 1) * Constants.TILE_SIZE + position.x;
+                jumping = false;
+            } else if (lowerRight == Map.GROUND_HILL_RIGHT) {
+                position.y = tileY * Constants.TILE_SIZE;
+                jumping = false;
+            } else if (lowerLeft == Map.GROUND_HILL_RIGHT) {
+                if (position.y >= tileY * Constants.TILE_SIZE - tileX * Constants.TILE_SIZE + position.x) {
+                    position.y = tileY * Constants.TILE_SIZE - tileX * Constants.TILE_SIZE + position.x;
+                    jumping = false;
+                }
+            }
+
+            if (upperRight == Map.GROUND_HILL_LEFT) {
+                position.y = tileY * Constants.TILE_SIZE + tileX * Constants.TILE_SIZE - position.x;
+                jumping = false;
+            } else if (lowerLeft == Map.GROUND_HILL_LEFT) {
+                position.y = tileY * Constants.TILE_SIZE;
+                jumping = false;
+            } else if (lowerRight == Map.GROUND_HILL_LEFT) {
+                if (position.y >= (tileX + 1) * Constants.TILE_SIZE - position.x + tileY * Constants.TILE_SIZE) {
+                    position.y = (tileX + 1) * Constants.TILE_SIZE - position.x + tileY * Constants.TILE_SIZE;
+                    jumping = false;
+                }
+            }
+        }
+
+        super.solveCollisionAgainstWalls(map);
+    }
+
+    /**
+     * Change the direction the enemy is going on hitting a wall.
+     * @param side the side which hit the wall
+     */
+    @Override
+    protected void hitWall(String side) {
+        if (side.equals("right") && velocity.x > 0 ||
+            side.equals("left") && velocity.x < 0) {
+            velocity.x *= -1;
         }
     }
 
@@ -131,35 +200,27 @@ public class Enemy {
      * @param mapX the x coordinate of the map
      * @param mapY the y coordinate of the map
      */
+    @Override
     public void draw(Graphics g, int mapX, int mapY) {
-        // draw the enemy
+        // set the enemy's image
         if (velocity.x < 0) {
-            g.drawImage(imageFacingLeft, position.x + mapX, position.y + mapY, null);
+            image = leftImage;
         } else {
-            g.drawImage(imageFacingRight, position.x + mapX, position.y + mapY, null);
+            image = rightImage;
         }
 
-        if (invincible) {
-            g.setColor(new Color(255, 0, 0, 50));
-            g.fillRect(position.x + mapX, position.y + mapY, width, height);
-        }
-
-        // draw its health bar
-        g.setColor(Color.BLACK);
-        g.fillRect(position.x + mapX, position.y + mapY - 10, width, 5);
-        g.setColor(Color.RED);
-        g.fillRect(position.x + mapX, position.y + mapY - 10, width * hp / maxHP, 5);
+        super.draw(g, mapX, mapY);
     }
 
     /**
      * Loads images of enemies.
      */
-    private void loadImages() {
+    private void loadResources() {
         ImageIcon ii;
 
         ii = new ImageIcon(getClass().getResource("/resources/images/enemy.png"));
-        imageFacingLeft = Util.getScaledImage(ii.getImage(), width, height);
+        leftImage = Util.getScaledImage(ii.getImage(), width, height);
 
-        imageFacingRight = Util.getFlippedImage(imageFacingLeft);
+        rightImage = Util.getFlippedImage(leftImage);
     }
 }
